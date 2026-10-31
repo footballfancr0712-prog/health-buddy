@@ -1,0 +1,18 @@
+{
+  "name": "health-buddy",
+  "version": "1.0.0",
+  "description": "健康 Buddy · 7天身体管理工作台（桌面版）",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "大哥好",
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^45.2.1"
+  },
+  "productName": "健康Buddy",
+  "private": true
+}

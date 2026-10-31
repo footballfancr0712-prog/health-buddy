@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html data-page-node-id="dRpw9yvjIww6F8SHEcXHrz" lang="zh-CN">
+<head data-page-node-id="ZY3MZNiBNC2pqDl1vJ2m8q">
+<!-- 本地导出版：已移除平台注入脚本，数据保存在本机浏览器 localStorage；如需云端同步请使用资料库在线页面 -->
+<meta data-page-node-id="uFwEza1RpQiemqInxcf3tZ" charset="UTF-8">
+<meta data-page-node-id="TyB4BYVXtcLGu1dzsJZmRS" content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
+<meta data-page-node-id="rAK5kxmXoDWszG5V9kcn1A" content="#10b981" name="theme-color">
+<title data-page-node-id="OWpssy0eOyNc8qDdoAECTW" data-pnid-children="t0wMlXot0YrApQtOZYLG7Z">健康 Buddy · 7天身体管理工作台</title>
+<!--pnid:E1WZC56pQ7z3rLYp7uVN18--><!-- 本工作台通过 WorkBuddy「资料库」skill 搭建、存储和部署：页面绑定资料库数据表「7天身体管理记录」，数据在线存储、双向同步 -->
+<style data-page-node-id="LwHmGBNkZshriV3rT7Ksaq" data-pnid-children="9rcsMC1kdSja8P4dl6lmU4">
+:root{
+  --green:#10b981; --green-d:#059669; --green-bg:#ecfdf5;
+  --amber:#f59e0b; --red:#ef4444; --blue:#3b82f6;
+  --bg:#f4f6f5; --card:#ffffff;
+  --t1:#111827; --t2:#6b7280; --t3:#9ca3af;
+  --line:#e5e7eb; --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--t1);font-size:15px;line-height:1.6}
+#app{max-width:520px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;padding-bottom:calc(86px + env(safe-area-inset-bottom))}
+main{padding:12px 12px 8px}
+
+/* 顶栏 */
+.topbar{position:sticky;top:0;z-index:40;background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;border-radius:0 0 18px 18px;box-shadow:0 2px 8px rgba(16,185,129,.25)}
+.logo{font-size:17px;font-weight:800;letter-spacing:.5px}
+.tb-sub{font-size:11.5px;opacity:.9;margin-top:1px}
+.tb-count{background:rgba(255,255,255,.22);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;white-space:nowrap}
+
+/* 页面切换 */
+.page{display:none}
+.page.active{display:block;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* 卡片 */
+.card{background:var(--card);border-radius:var(--radius);padding:15px 15px;margin-bottom:12px;box-shadow:0 1px 3px rgba(17,24,39,.06)}
+.card-title{font-size:14px;font-weight:700;margin-bottom:10px}
+.card-title .unit{font-size:11px;color:var(--t3);font-weight:400;margin-left:4px}
+
+/* 按钮 */
+.btn{border:none;border-radius:12px;padding:11px 16px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn.primary{background:var(--green);color:#fff;width:100%}
+.btn.primary.big{padding:14px;font-size:16px}
+.btn.primary:active{background:var(--green-d)}
+.btn.ghost{background:#fff;color:var(--green-d);border:1px solid var(--green);width:100%}
+.btn.danger{background:#fff;color:var(--red);border:1px solid #fca5a5;flex:1}
+.btn-col{display:flex;flex-direction:column;gap:8px;margin:2px 0 10px}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+
+/* 表单 */
+.field{margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:12px;color:var(--t2);margin-bottom:5px}
+.field input[type=number],.field input[type=time],.field input[type=text]{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;background:#fff;outline:none;font-family:inherit}
+.field input:focus{border-color:var(--green)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:11.5px;color:var(--t3);margin-top:4px;line-height:1.5}
+.water-val{font-size:22px;font-weight:800;color:var(--green-d);margin-bottom:2px}
+input[type=range]{width:100%;accent-color:var(--green)}
+.chips-inline{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.chips-inline .chip{flex-direction:row;padding:5px 12px;font-size:12px;min-width:0}
+
+/* 日期选择条 */
+.chips-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chips-scroll::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;border:1px solid var(--line);background:#fafafa;border-radius:12px;padding:6px 8px;display:flex;flex-direction:column;align-items:center;font-size:12.5px;color:var(--t2);cursor:pointer;position:relative;min-width:58px;font-family:inherit}
+.chip em{font-style:normal;font-size:11px;color:var(--t3)}
+.chip.on{border-color:var(--green);background:var(--green-bg);color:var(--green-d);font-weight:700}
+.chip .dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+/* 三餐/情绪选择 */
+.meal-row,.sel-row{display:flex;gap:6px}
+.meal-row button,.sel-row button{flex:1;padding:9px 2px;border:1px solid var(--line);background:#fafafa;border-radius:10px;font-size:14px;cursor:pointer;color:var(--t2);font-family:inherit}
+.sel-row button{font-size:15px}
+.meal-row button.on,.sel-row button.on{border-color:var(--green);background:var(--green-bg);color:var(--green-d);font-weight:700}
+
+/* 首页 */
+.home-top{display:flex;justify-content:space-between;align-items:center}
+.greet{font-size:12px;color:var(--t2)}
+.verdict{font-size:24px;font-weight:800;margin-top:2px;letter-spacing:.5px}
+.grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:13px 0}
+.g6{background:#f8faf9;border-radius:12px;padding:9px 4px;display:flex;flex-direction:column;align-items:center;gap:1px}
+.g6 .gi{font-size:18px}
+.g6 .gl{font-size:11px;color:var(--t3)}
+.g6 b{font-size:15px}
+.note{font-size:13px;background:#fffbeb;border-radius:10px;padding:8px 10px;margin-bottom:10px;color:#92400e}
+.tips{background:var(--green-bg);border-radius:12px;padding:10px 12px;margin:2px 0 12px}
+.tip{font-size:13px;color:#065f46;line-height:1.7;padding-left:4px}
+.center{text-align:center;padding:22px 14px}
+.empty-emoji{font-size:42px}
+.empty-title{font-size:17px;font-weight:700;margin:8px 0 4px}
+.empty-sub{font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.7}
+
+/* 评分 */
+.week-score{display:flex;align-items:baseline;gap:4px;margin:4px 0 6px}
+.week-score b{font-size:36px;font-weight:800}
+.week-score .unit{font-size:13px;color:var(--t3)}
+.week-score em{font-style:normal;font-size:14px;color:var(--t2);margin-left:8px;font-weight:600}
+.week-dots{display:flex;gap:6px;margin:10px 0 6px}
+.wd{flex:1;text-align:center;font-size:11px;color:var(--t3);border:1px solid var(--line);border-radius:8px;padding:4px 0}
+.wd.has{background:var(--green-bg);color:var(--green-d);border-color:#a7f3d0;font-weight:700}
+.dim-row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12px;color:var(--t2)}
+.dim-row>span{width:56px;flex-shrink:0}
+.dim-bar{flex:1;height:8px;background:#f0f1f2;border-radius:4px;overflow:hidden}
+.dim-bar i{display:block;height:100%;border-radius:4px}
+.dim-row b{width:36px;text-align:right;font-size:12px}
+
+/* 周报 */
+.report-score{display:flex;align-items:center;gap:16px;margin-bottom:6px}
+.big-score{font-size:46px;font-weight:800;line-height:1}
+.big-score span{font-size:15px;color:var(--t3);font-weight:500}
+.grade{font-size:19px;font-weight:800}
+.day-scores{display:flex;gap:6px;margin:14px 0 10px}
+.ds{flex:1;text-align:center;background:#f8faf9;border-radius:10px;padding:8px 0}
+.ds b{display:block;font-size:16px}
+.ds span{font-size:11px;color:var(--t3)}
+.ds.none b{color:var(--t3);font-weight:500}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:#f8faf9;border-radius:12px;padding:10px;display:flex;align-items:center;gap:9px}
+.stat .si{font-size:20px}
+.stat .sl{font-size:11px;color:var(--t3);display:block;line-height:1.3}
+.stat b{font-size:15px}
+.sum-block{margin-bottom:14px}
+.sum-block:last-child{margin-bottom:0}
+.sum-block>b{display:block;font-size:13px;margin-bottom:2px}
+.sum-item{font-size:13.5px;background:#f8faf9;border-radius:10px;padding:9px 11px;margin-top:7px;line-height:1.65}
+.tip-item{display:flex;gap:8px;font-size:13.5px;background:#f8faf9;border-radius:10px;padding:9px 11px;margin-top:7px;line-height:1.65}
+.tip-item .ti{flex-shrink:0}
+.disclaimer{font-size:11.5px;color:var(--t3);line-height:1.7;padding:2px 6px 10px;text-align:center}
+
+/* 趋势图表 */
+.chart{width:100%;height:190px;display:block}
+.mg-head,.mg-row{display:grid;grid-template-columns:1fr 38px 38px 38px;align-items:center;text-align:center}
+.mg-head{color:var(--t3);font-size:12px;margin-bottom:4px}
+.mg-row{padding:6px 0;border-bottom:1px dashed #f0f1f2}
+.mg-row:last-child{border-bottom:none}
+.mg-row.today{background:var(--green-bg);border-radius:8px}
+.mg-date{text-align:left;color:var(--t2);font-size:12px;padding-left:4px}
+.mg.on{color:var(--green-d);font-size:15px}
+.mg.off{color:#d1d5db;font-size:15px}
+.mg.none{color:#e5e7eb;font-size:14px}
+
+/* 底部导航 */
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;display:flex;background:#fff;border-top:1px solid var(--line);padding:6px 0 calc(7px + env(safe-area-inset-bottom));z-index:50}
+.tabbar button{flex:1;border:none;background:none;font-size:20px;color:var(--t3);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;font-family:inherit}
+.tabbar button span{font-size:11px}
+.tabbar button.on{color:var(--green-d)}
+
+/* Toast */
+#toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-8px);background:rgba(17,24,39,.92);color:#fff;padding:9px 18px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(min-width:560px){
+  #app{box-shadow:0 0 24px rgba(17,24,39,.08)}
+}
+</style>
+</head>
+<body data-page-node-id="8O3PMjpD8bRXzYtkdDJVKb">
+<div data-page-node-id="Ji77kpfwGJg3XZiL2PFLMC" id="app">
+  <header data-page-node-id="3i8enRvZMtjeqzqxrS54of" class="topbar">
+    <div data-page-node-id="y20YjhiLqvpKojQ6CvvzQm">
+      <div data-page-node-id="OjG0h5jWfECsF9iKQ5o4pt" class="logo"><!--pnid:73DctcDkM3uvpksJaiKO9s-->🌱 健康 Buddy</div>
+      <div data-page-node-id="YCYIaWARoM1dczzb9rah1h" class="tb-sub" id="topbar-range"></div>
+    </div>
+    <div data-page-node-id="QYOKl6WCQScgovdlA2nMDX" style="display:flex; align-items:center; gap:6px">
+      <span data-page-node-id="aQx5pKPqxuXlnYreuIRSJi" id="sync-badge" style="background:rgba(255,255,255,.22); border-radius:999px; padding:4px 10px; font-size:11px; font-weight:600; color:#fff; white-space:nowrap"><!--pnid:3tUfH03Xr9Tbh4PKsx8xY1-->同步中…</span>
+      <div data-page-node-id="nRRXHuqOpsiDgwfEUaBSVd" class="tb-count" id="topbar-count"><!--pnid:Mhh8kn2qNwZfhvE8egAQoV-->0/7 天</div>
+    </div>
+  </header>
+
+  <main data-page-node-id="LXA9zHRIrC2xTAVv1a52MD">
+    <!--pnid:j7K6lhUhUs9losd7EyHL97--><!-- 首页 -->
+    <section data-page-node-id="lHfR1T6YkPkToaxPirhvYl" class="page active" id="page-home"><div data-page-node-id="wQb6vL6icmx1gWbjsMlOpa" data-sp-bindable="database" data-sp-database-id="jzThR0HIkYECaeIcJvLtcq" id="home-body"></div></section>
+
+    <!--pnid:5xsBtaiS4R3GZL4OHIfNG1--><!-- 记录页 -->
+    <section data-page-node-id="yhjTuwP8Svmlk4143cAtGp" class="page" id="page-log">
+      <div data-page-node-id="Hl6llLgD2i9pUUO6Umj6Zb" class="card">
+        <div data-page-node-id="ebiRBig9IhAiU3Sx2MxExK" class="card-title"><!--pnid:pD2l9bx7LYWDC37PfHDe4S-->记录哪一天 <span data-page-node-id="bl1i8jVxT5rjcPsphNIqiW" class="unit"><!--pnid:9q9z9H6WFm0JK249pxR96Z-->可补填最近 7 天，绿色小点代表已有记录</span></div>
+        <div data-page-node-id="MXDPrjjVrxu5QJXKC3gPj3" class="chips-scroll" id="date-chips"></div>
+      </div>
+      <div data-page-node-id="WEBfnUxSWXlIBr0Fw4tIsj" class="card">
+        <div data-page-node-id="yRB2Fn1QwfziU62vdTIXPT" class="card-title"><!--pnid:P30g8IF9MyjM89rYZRKFiF-->😴 睡眠</div>
+        <div data-page-node-id="k9Ag1PmIpR9ij1bde8T2Is" class="row2">
+          <div data-page-node-id="1IOK6tJrKfgOelzI8T6cbJ" class="field"><label data-page-node-id="sIG4S77FHcTTsJDiLhQG1Z"><!--pnid:CLNxLGWz8W2XQWUCCSHGB5-->昨晚入睡时间</label><input data-page-node-id="ESO164yMpKfITvSr3sfrJb" id="f-bed" type="time"></div>
+          <div data-page-node-id="dpOTAK4kaKsQoWS6eP9n7K" class="field"><label data-page-node-id="mPc5JL4nLHikEXG01U7MV9"><!--pnid:AtSu4vspHDrrzxDdQN2aA9-->今天起床时间</label><input data-page-node-id="T2hapef5w8dZY8jxIfjGo7" id="f-wake" type="time"></div>
+        </div>
+        <div data-page-node-id="O7bkwY8YDfcqe01sAncrAc" class="field">
+          <label data-page-node-id="sItq2jkwDYWd9LVsmFAMgV"><!--pnid:2RdRGdwjM8N4JmxBBJHfHE-->睡眠时长（小时，含午睡可手动修改）</label>
+          <input data-page-node-id="hbAead6kthsNEhJ9q042SM" id="f-sleep" max="16" min="0" placeholder="填了入睡和起床会自动计算" step="0.5" type="number">
+          <div data-page-node-id="pRHKeOqipMypz2m11iogal" class="hint" id="f-sleep-auto"></div>
+        </div>
+      </div>
+      <div data-page-node-id="6ZoZB33v7SZBgOC18rMtbx" class="card">
+        <div data-page-node-id="MS7PX8KavF4Lz3IUTNcwSW" class="card-title"><!--pnid:Wxu2ipqVusTm8GIuVZpitu-->🏃 运动 &amp; 💧 饮水</div>
+        <div data-page-node-id="nK433Y75yTaBSiQxoiyfHq" class="field">
+          <label data-page-node-id="zneW53BrNUdfyNZgKaUyOj"><!--pnid:8OB5PLTgPD6FWoRX2r5vxM-->今天运动了多久（分钟，没运动填 0）</label>
+          <input data-page-node-id="TxPaVijpDBJpatdvqaTkd8" id="f-exercise" max="600" min="0" placeholder="如 30" step="5" type="number">
+          <div data-page-node-id="PsSq1jB5HM842HYLvSJZFv" class="chips-inline" id="ex-chips"></div>
+        </div>
+        <div data-page-node-id="Tq3BXT4nezLUKYww5AW7YD" class="field">
+          <label data-page-node-id="wPVOhGfBHeUsNbyNbRSJIF"><!--pnid:2zxr4xvmlooUXKQZVA5dEt-->今天喝了多少水</label>
+          <div data-page-node-id="WvNRS5SAjjCQWDhlseL6Vf" class="water-val" id="f-water-val"><!--pnid:kS4c50YR96BoyAReahRi21-->0 ml</div>
+          <input data-page-node-id="j4KGo2ecWHG2S490A4fD8j" id="f-water" max="3000" min="0" step="100" type="range" value="0">
+          <div data-page-node-id="2byQl4J5OnEvM5ZgCMqFBY" class="hint"><!--pnid:qhih4X1vPHys6YoYoP76FY-->滑动选择，参考目标 1500 ml / 天</div>
+        </div>
+      </div>
+      <div data-page-node-id="WgtSZ32IfBaNW1QNRZ2gET" class="card">
+        <div data-page-node-id="KTwrxXLs5925xI4qnS9OzQ" class="card-title"><!--pnid:dAKYgztItNqLc2yJTsBHVb-->🍚 三餐 &amp; 饮食</div>
+        <div data-page-node-id="c912r6NCZteo2aA7XaoSFW" class="field">
+          <label data-page-node-id="ItivDKWryB4iTPH6QSfaLN"><!--pnid:y1ssTfCCHWXF9OMUy5atIb-->今天吃了哪几顿正餐（点选）</label>
+          <div data-page-node-id="zLBlsTngTeHYKnegJz5YPR" class="meal-row">
+            <button data-page-node-id="fK3MoGYonIk0Z5yiGYbcqv" id="meal-0" type="button"><!--pnid:VJcsFU7P8dFuSWHD93bzhs-->🍳 早餐</button>
+            <button data-page-node-id="hPYnPG8X5mXp7xKphs0tKh" id="meal-1" type="button"><!--pnid:EvUaBVLHV8hM2J2WsYAf1x-->🍚 午餐</button>
+            <button data-page-node-id="s0tQfRTyY733dSnHNVoi5P" id="meal-2" type="button"><!--pnid:O0SOHZgrnUqOnwY6FVPZIj-->🍜 晚餐</button>
+          </div>
+        </div>
+        <div data-page-node-id="jArdyNrcSmthBqQlrEtZef" class="field">
+          <label data-page-node-id="5no1LlHDRaEXgcIICyJmeJ"><!--pnid:dpSDKWSnRMgW6UCjrVI33K-->今天吃得比较多的是哪类</label>
+          <div data-page-node-id="v1W3aczbvxopW4iO40P0MG" class="chips-inline" id="food-chips"></div>
+        </div>
+      </div>
+      <div data-page-node-id="n8FL45IIuEMdtY2LwLkSM2" class="card">
+        <div data-page-node-id="Eng48uKGcQvvlW1oJtXt9b" class="card-title"><!--pnid:F9VcECCLQYbb4PnO6fVnfH-->🪑 久坐 &amp; 状态自评</div>
+        <div data-page-node-id="vVNUSxIvgugKIM8NeiOUvx" class="field"><label data-page-node-id="L5nJkGGpS3wnPKZMWYIEKV"><!--pnid:IfpO27xZHtaZWw2JsOr4HP-->今天累计久坐多久（小时）</label><input data-page-node-id="h4NWJ66hgfE9uvdKg4FMYh" id="f-sit" max="18" min="0" placeholder="如 7.5" step="0.5" type="number"></div>
+        <div data-page-node-id="vrv9xgBun7geTnKilHuLy9" class="field"><label data-page-node-id="iGJL7MPNQpCY2Z1diFrViR"><!--pnid:z1HJVbwRZOtxKAab5GG1Lz-->今日精神状态</label><div data-page-node-id="nXxrGz6ezTEbnkIOdqxLH2" class="sel-row" id="mood-btns"></div></div>
+        <div data-page-node-id="SI4G8eGe77cwDAcDQpNN4x" class="field"><label data-page-node-id="sqiPkGiYhmK4TZ5ljT5JS2"><!--pnid:iUO2ETwOv6XZuapJVcX0Qy-->今日身体状态自评</label><div data-page-node-id="z0c4wIuV5WI4WY7bBEzBzj" class="sel-row" id="body-btns"></div></div>
+        <div data-page-node-id="7INsWHNkq4GNcDZoBUrZa9" class="field"><label data-page-node-id="u6zQ86W4bDXXuQll3gYZ30"><!--pnid:g9kxTlPE1BPo0TvsJMKKUh-->备注（可选）</label><input data-page-node-id="E1SmSh3vOsZuCCHSXWG482" id="f-note" maxlength="40" placeholder="如：考试周，没空运动" type="text"></div>
+      </div>
+      <div data-page-node-id="9IVj4Tz0H5cE17aaX3hgtI" class="btn-col">
+        <button data-page-node-id="lXdZPawacNsTwUTqsuZXbq" class="btn primary big" id="btn-save"><!--pnid:VG8VvWIbMZNXEnIJ9F6BVW-->保存这一天</button>
+        <button data-page-node-id="b7gDhP3MwffeXsabm33LJE" class="btn ghost" id="btn-clear-day"><!--pnid:1QxinelHYqFmMUf59NVtIY-->清空这天的记录</button>
+      </div>
+      <div data-page-node-id="1aHa7KrhDOfS7HgbwEq9a1" class="card">
+        <div data-page-node-id="Xot95JYjgzpljvNMgG8uQa" class="card-title"><!--pnid:uQbpv6QmLZRAQ7g6qqCSBs-->🔄 CSV 数据导入 / 导出 <span data-page-node-id="RqMgwvKWpSmPmaJRtZUZxV" class="unit"><!--pnid:aPVXwHjmKhqyd0q1SX9S9D-->一次可导入多天，导入后自动算分</span></div>
+        <div data-page-node-id="dQihDJ6hLp2kFWTgTJHHHb" class="hint"><!--pnid:qrtbaFDMmGvuTfA04O5mzc-->表头 14 列（括号里就是单位），列顺序不限、缺列可省：日期(必填，YYYY-MM-DD)、入睡时间 / 起床时间(24 小时制)、睡眠时长(小时)、运动时长(分钟)、饮水量(ml)、早餐 / 午餐 / 晚餐(吃了填「是」，没吃填「否」)、主要食物(食堂 / 外卖 / 自己做 / 快餐 / 均衡)、久坐时长(小时)、精神状态与身体自评(1-5)、备注。三餐三列按「吃了填是、没吃填否」填，三列都填才算完整；如果这天压根没记三餐，三列全留空即可——只有三列全空才会被当作「没记三餐」、不参与评分。</div>
+        <div data-page-node-id="Qrmkru0pOS4dDsKQsAf8xq" class="btn-row" style="margin-top:10px">
+          <button data-page-node-id="w2pAyjDt7ZlEXM1h0JOUiL" class="btn primary" id="btn-csv-import" type="button"><!--pnid:HkwQAMwo4VOUFIc2NirgTU-->导入 CSV 文件</button>
+          <button data-page-node-id="0M0wFmPkdIDXv4sFhn0ltr" class="btn ghost" id="btn-csv-export" type="button"><!--pnid:J3o7Na802s6LvIaIdQB7GD-->导出全部记录</button>
+        </div>
+        <button data-page-node-id="QZPvnftYTKyYuUA5KcL8Dm" class="btn ghost" id="btn-csv-template" type="button" style="margin-top:8px"><!--pnid:VwddtBAZFWqegPbaDOu4DB-->下载 CSV 模板</button>
+        <input data-page-node-id="PtHPFOhBoOozuCmhxAjVxV" accept=".csv,text/csv" id="csv-file" type="file" style="display:none">
+        <div data-page-node-id="puWgCv5VqWI4QOA6oTrhRC" class="hint" id="csv-status"></div>
+        <div class="hint" id="desk-status" style="margin-top:2px;color:#059669"></div>
+      </div>
+    </section>
+
+    <!--pnid:m9jz1fDOQ457JMNqZDE5xk--><!-- 趋势页 -->
+    <section data-page-node-id="dNC8QY0MSLA6xLmvUnlPiA" class="page" id="page-trend"><div data-page-node-id="FmFp1AIVORCHHNWZJQsAby" data-sp-bindable="database" data-sp-database-id="jzThR0HIkYECaeIcJvLtcq" id="trend-body"></div></section>
+
+    <!--pnid:ZjFaEARji3n5L96OA0SBg5--><!-- 周报页 -->
+    <section data-page-node-id="RSvoRLLiPYnTHDRsCASP4m" class="page" id="page-report"><div data-page-node-id="qqCJOJwTOmXHz37EA3iBuz" data-sp-bindable="database" data-sp-database-id="jzThR0HIkYECaeIcJvLtcq" id="report-body"></div></section>
+  </main>
+
+  <nav data-page-node-id="HhVJ1xfCsUwSEAmea0B5FQ" class="tabbar">
+    <button data-page-node-id="lkPzPfpGM0gaIuCiRs1qUw" class="on" data-tab="home"><!--pnid:HaXAn3E0lbbvLuJNFYexiz-->🏠<span data-page-node-id="SRr1vsoG8fuph8GfpEXGwq"><!--pnid:GF8HMkZ6y0yrhKVoVBgq1U-->今日</span></button>
+    <button data-page-node-id="hB52bFfAWX8ZNt6LDgNNIM" data-tab="log"><!--pnid:K7TirLIN8tPmEtr9q1nyTP-->📝<span data-page-node-id="hHuBZ0Iwd8HL4jaMN37ONs"><!--pnid:G0XMDYsX6ImmjU8BPvOK4a-->记录</span></button>
+    <button data-page-node-id="AyVVb4mnKlF27Ji9y3lr7G" data-tab="trend"><!--pnid:zuy2FeVmNhv4VIjNCKrVYU-->📈<span data-page-node-id="apQiPCWhP867zskYmH9QRU"><!--pnid:yHw2pZaTXHGFJhvbsWMdTO-->趋势</span></button>
+    <button data-page-node-id="FSQ6eFfDaUfcgYSnPFvYYq" data-tab="report"><!--pnid:W2gYIBhdGUUrVoP4k4sDig-->📋<span data-page-node-id="cF1zXslalSoISvVKAmLHD8"><!--pnid:XL7FgIjbDftcnmttyoicvb-->周报</span></button>
+  </nav>
+  <div data-page-node-id="cYyypmXR7WwwLe530P3cnD" id="toast"></div>
+</div>
+
+<script data-page-node-id="FuYhUIkP7r2r5DAJXnD16q" data-pnid-children="GLGDHu1hfp0xN5snTLMQkU">
+/* ================= 工具 ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const LS_KEY = 'healthBuddyRecords.v1';
+/* 表单草稿缓存：未提交表单的技术兜底，刷新后可恢复正在填写的内容 */
+const DRAFT_KEY = 'healthBuddyDraft.v1';
+function readDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)) || null; }catch(e){ return null; } }
+function saveDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({ k: currentKey, d: collectForm() })); }catch(e){} }
+function clearDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+/* ============ 在线数据层（资料库 SDK，实现跨设备同步） ============
+ * 优先使用 window.__SMART_PAGE__.database（资料库注入）；不存在则降级 localStorage。
+ * 在线模式：每次保存写入资料库 + 本地缓存，读取时以内存中的在线快照为准；
+ * 订阅 onUpdated 实现「别人/其他设备改动 → 本页实时刷新」的双向同步。
+ */
+var DATABASE_ID = 'jzThR0HIkYECaeIcJvLtcq';
+var db = (typeof window!=='undefined' && window.__SMART_PAGE__ && window.__SMART_PAGE__.database) || null;
+var onlineMode = !!db;      // true=在线同步, false=纯本地
+var syncState = onlineMode ? 'connecting' : 'offline'; // connecting|synced|offline
+var onlineDirty = false;          // 本地有待上传的修改
+var onlineLoadResolve = null;
+var onlineLoaded = new Promise(function(res){ onlineLoadResolve = res; });
+const MOOD_EMOJI = ['😪','😕','😐','🙂','😄'];
+const BODY_LABEL = ['很差','较差','一般','不错','很好'];
+const FOOD_TYPES = ['食堂为主','外卖为主','自己做饭','快餐居多','均衡搭配'];
+const EX_CHIPS = [0,15,30,45,60,90];
+const DIM_NAME = { sleep:'睡眠', exercise:'运动', water:'饮水', meals:'三餐', sit:'久坐', mood:'主观状态' };
+const DIM_MAX  = { sleep:30, exercise:20, water:15, meals:15, sit:10, mood:10 };
+const TIP_ICON = { sleep:'💤', exercise:'🏃', water:'💧', diet:'🍚', sit:'🪑', good:'✅', info:'💡' };
+
+function fmtDate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function parseDate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function weekWindow(){
+  const days=[]; const now=new Date();
+  for(let i=6;i>=0;i--){ const d=new Date(now); d.setDate(d.getDate()-i); days.push(fmtDate(d)); }
+  return days;
+}
+function fmtMD(ds){ const d=parseDate(ds); return `${d.getMonth()+1}月${d.getDate()}日 · 周${'日一二三四五六'[d.getDay()]}`; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+const avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+
+/* 入睡时间字符串 → 小时数（凌晨入睡按 24+x 计，便于画图） */
+function bedToHours(t){ const [h,m]=t.split(':').map(Number); return (h<12 ? h+24 : h) + m/60; }
+function bedLabel(v){ const total=Math.round(v*60); const h=Math.floor(total/60)%24, m=total%60; return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'); }
+
+/* ================= 数据层 ================= */
+function loadRecords(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }catch(e){ return {}; } }
+function saveRecords(r){ try{ localStorage.setItem(LS_KEY, JSON.stringify(r)); }catch(e){} }
+let records = loadRecords();
+
+/* ---- 在线数据同步（资料库 SDK） ---- */
+function setSyncState(s){ syncState=s; updateSyncBadge(); }
+function updateSyncBadge(){
+  var el=document.getElementById('sync-badge');
+  if(!el) return;
+  var map={ synced:['✓ 已同步','#059669'], connecting:['同步中…','#d97706'], offline:['本地模式','#9ca3af'] };
+  var m=map[syncState]||map.offline;
+  el.textContent=m[0]; el.style.background=m[1];
+}
+function fieldValue(row, name){ return (row&&row[name]!=null)?row[name]:null; }
+function rowToRecord(r){
+  if(!r) return null;
+  var rec={};
+  var d=fieldValue(r,'日期'); if(d) rec['_date']=String(d).slice(0,10);
+  if(fieldValue(r,'入睡时间')!=null) rec.bedTime=fieldValue(r,'入睡时间');
+  if(fieldValue(r,'起床时间')!=null) rec.wakeTime=fieldValue(r,'起床时间');
+  if(fieldValue(r,'睡眠时长')!=null) rec.sleepHours=Number(fieldValue(r,'睡眠时长'));
+  if(fieldValue(r,'运动时长')!=null) rec.exerciseMin=Number(fieldValue(r,'运动时长'));
+  if(fieldValue(r,'饮水量')!=null) rec.waterMl=Number(fieldValue(r,'饮水量'));
+  var meals=[]; meals.push(!!fieldValue(r,'早餐')); meals.push(!!fieldValue(r,'午餐')); meals.push(!!fieldValue(r,'晚餐'));
+  if(meals.some(Boolean)) rec.meals=meals;
+  if(fieldValue(r,'主要食物')!=null) rec.foodType=fieldValue(r,'主要食物');
+  if(fieldValue(r,'久坐时长')!=null) rec.sitHours=Number(fieldValue(r,'久坐时长'));
+  if(fieldValue(r,'精神状态')!=null) rec.mood=Number(fieldValue(r,'精神状态'));
+  if(fieldValue(r,'身体自评')!=null) rec.bodyScore=Number(fieldValue(r,'身体自评'));
+  if(fieldValue(r,'备注')) rec.note=fieldValue(r,'备注');
+  rec['_rid']=r._id||null;
+  return rec;
+}
+function loadAllOnline(){
+  if(!db){ setSyncState('offline'); onlineLoadResolve(); return; }
+  setSyncState('connecting');
+  db.query({ databaseId:DATABASE_ID, pageSize:200 })
+    .then(function(r){
+      var acc=r.results||[];
+      var next=r.nextCursor;
+      var cursor=next;
+      var guard=0;
+      var loop=function(){
+        guard++;
+        if(guard>50){ finish(); return; }
+        if(r.hasMore && next && (r.results||[]).length){
+          db.query({ databaseId:DATABASE_ID, pageSize:200, startCursor:cursor })
+            .then(function(r2){
+              acc=acc.concat(r2.results||[]); next=r2.nextCursor; cursor=next; r=r2; loop();
+            }).catch(function(){ finish(); });
+        } else { finish(); }
+      };
+      var finish=function(){
+        records={};
+        acc.forEach(function(row){
+          var rec=rowToRecord(row); if(rec && rec._date) records[rec._date]=rec;
+        });
+        saveRecords(records);
+        onlineDirty=false; setSyncState('synced'); onlineLoadResolve();
+      };
+      loop();
+    })
+    .catch(function(err){ console.error('[database] 在线加载失败，降级本地:', err); setSyncState('offline'); onlineDirty=true; onlineLoadResolve(); });
+}
+function recToProperties(rec, date, forceMeals){
+  var p={};
+  p['日期']={ date: date+'T00:00:00Z' };
+  if(rec.bedTime!=null) p['入睡时间']={ text: rec.bedTime };
+  if(rec.wakeTime!=null) p['起床时间']={ text: rec.wakeTime };
+  if(rec.sleepHours!=null) p['睡眠时长']={ number: rec.sleepHours };
+  if(rec.exerciseMin!=null) p['运动时长']={ number: rec.exerciseMin };
+  if(rec.waterMl!=null) p['饮水量']={ number: rec.waterMl };
+  /* 三餐只有「真的记录过」才写进表：没填过就留空，避免「没记录」被写成「三顿都没吃」而按 0 分算 */
+  if(rec.meals || forceMeals){
+    var meals=rec.meals||[false,false,false];
+    p['早餐']={ checkbox: !!meals[0] }; p['午餐']={ checkbox: !!meals[1] }; p['晚餐']={ checkbox: !!meals[2] };
+  }
+  if(rec.foodType!=null) p['主要食物']={ select: rec.foodType };
+  if(rec.sitHours!=null) p['久坐时长']={ number: rec.sitHours };
+  if(rec.mood!=null) p['精神状态']={ number: rec.mood };
+  if(rec.bodyScore!=null) p['身体自评']={ number: rec.bodyScore };
+  if(rec.note) p['备注']={ text: rec.note };
+  return p;
+}
+function syncDayOnline(date, rec){
+  if(!db) return Promise.resolve(false);
+  setSyncState('connecting');
+  return db.query({ databaseId:DATABASE_ID, filter:{ property:{ property:'日期', date:{ equals: date } } }, pageSize:5 })
+    .then(function(qr){
+      var rows=(qr&&qr.results)||[];
+      var existing=rows[0];
+      var props=recToProperties(rec, date, !!existing);
+      if(existing && existing._id){
+        return db.updateRecord({ databaseId:DATABASE_ID, recordId:existing._id, properties:props })
+          .then(function(){ setSyncState('synced'); return true; });
+      }
+      return db.addRecord({ databaseId:DATABASE_ID, properties:props })
+        .then(function(){ setSyncState('synced'); return true; });
+    })
+    .catch(function(err){ console.error('[database] 在线保存失败:', err); setSyncState('offline'); return false; });
+}
+function subscribeOnline(){
+  if(!db || typeof db.onUpdated!=='function') return;
+  var timer=null;
+  db.onUpdated(function(payload){
+    var ids=(payload&&payload.databaseIds)||[];
+    if(ids.indexOf(DATABASE_ID)===-1) return;
+    if(timer) clearTimeout(timer);
+    timer=setTimeout(function(){ timer=null; reloadAllQuiet(); }, 300);
+  });
+}
+var reloadTimer=null;
+function reloadAllQuiet(){
+  if(reloadTimer) return; reloadTimer=true;
+  if(!db){ setSyncState('offline'); reloadTimer=false; return; }
+  db.query({ databaseId:DATABASE_ID, pageSize:200 })
+    .then(function(r){
+      var acc=(r.results||[]).slice(); var next=r.nextCursor; var cursor=next;
+      var walk=function(){
+        if(r.hasMore && next && cursor && (r.results||[]).length){
+          db.query({ databaseId:DATABASE_ID, pageSize:200, startCursor:cursor })
+            .then(function(r2){ acc=acc.concat(r2.results||[]); next=r2.nextCursor; cursor=next; r=r2; walk(); })
+            .catch(function(){ finishReload(acc); });
+        } else finishReload(acc);
+      };
+      var finishReload=function(acc2){
+        var merged={}; acc2.forEach(function(row){ var rec=rowToRecord(row); if(rec&&rec._date) merged[rec._date]=rec; });
+        // 保留本地尚未同步成功的修改
+        Object.keys(records).forEach(function(k){ if(onlineDirty && !merged[k]) merged[k]=records[k]; });
+        records=merged; saveRecords(records); setSyncState('synced');
+        currentKey=fmtDate(new Date()); refreshAll(); reloadTimer=false;
+      };
+      walk();
+    })
+    .catch(function(){ setSyncState('offline'); reloadTimer=false; });
+}
+let currentKey = fmtDate(new Date());
+let formState = { meals:[false,false,false], foodType:null, mood:0, body:0 };
+
+/* 统一刷新入口：更新顶栏并重渲染当前激活页（双向同步收到变更时调用） */
+function refreshAll(){
+  updateTopbar();
+  var active=$('#page-home').classList.contains('active');
+  var activeLog=$('#page-log').classList.contains('active');
+  var activeTrend=$('#page-trend').classList.contains('active');
+  if(active) renderHome();
+  else if(activeLog){ renderDateChips(); loadForm(currentKey); }
+  else if(activeTrend) renderTrend();
+  else renderReport();
+}
+
+/* ================= 睡眠计算 ================= */
+function calcSleep(bed, wake){
+  const [bh,bm]=bed.split(':').map(Number), [wh,wm]=wake.split(':').map(Number);
+  let mins=(wh*60+wm)-(bh*60+bm);
+  if(mins<=0) mins+=24*60;
+  if(mins<60||mins>16*60) return null;
+  return mins/60;
+}
+function autoSleepUI(){
+  const b=$('#f-bed').value, w=$('#f-wake').value, tip=$('#f-sleep-auto');
+  if(b&&w){
+    const s=calcSleep(b,w);
+    if(s!=null){ $('#f-sleep').value=s.toFixed(1); tip.textContent=`按入睡/起床自动计算：${s.toFixed(1)} 小时，含午睡可手动修改`; }
+    else tip.textContent='入睡和起床时间似乎不太合理，请手动填写时长';
+  } else tip.textContent='';
+}
+
+/* ================= 评分引擎（完全基于填写数据） ================= */
+function scSleep(t){
+  if(t==null) return null;
+  if(t>=7&&t<=9) return 30;
+  if((t>=6&&t<7)||(t>9&&t<=10)) return 24;
+  if(t>=5&&t<6) return 16;
+  if(t>10) return 18;
+  return 8;
+}
+function scExercise(e){
+  if(e==null) return null;
+  if(e>=30) return 20;
+  if(e>=15) return 14;
+  if(e>0) return 8;
+  return 0;
+}
+function scWater(w){ if(w==null) return null; return Math.round(Math.min(1,w/1500)*15); }
+function scMeals(m){ if(!m) return null; return m.filter(Boolean).length*5; }
+function scSit(s){
+  if(s==null) return null;
+  if(s<=4) return 10;
+  if(s<=6) return 8;
+  if(s<=8) return 6;
+  return 3;
+}
+function scMood(mood, body){
+  if(mood==null&&body==null) return null;
+  const vals=[];
+  if(mood!=null) vals.push(mood);
+  if(body!=null) vals.push(body);
+  return avg(vals)*2; /* 满分10 */
+}
+function scoreDay(rec){
+  if(!rec) return null;
+  const parts={
+    sleep:scSleep(rec.sleepHours), exercise:scExercise(rec.exerciseMin),
+    water:scWater(rec.waterMl), meals:scMeals(rec.meals),
+    sit:scSit(rec.sitHours), mood:scMood(rec.mood, rec.bodyScore)
+  };
+  let got=0, full=0;
+  for(const k in parts){ if(parts[k]!=null){ got+=parts[k]; full+=DIM_MAX[k]; } }
+  if(full===0) return null;
+  return { total: Math.round(got/full*100), parts };
+}
+function weekScore(winRecs){
+  const ss=winRecs.filter(d=>d.rec).map(d=>scoreDay(d.rec)).filter(Boolean);
+  if(!ss.length) return null;
+  return Math.round(ss.reduce((a,b)=>a+b.total,0)/ss.length);
+}
+function gradeLabel(s){ if(s==null) return '—'; if(s>=85) return '优秀'; if(s>=70) return '良好'; if(s>=55) return '一般'; return '需要调整'; }
+function gradeColor(s){ if(s==null) return '#9ca3af'; if(s>=85) return '#10b981'; if(s>=70) return '#059669'; if(s>=55) return '#f59e0b'; return '#ef4444'; }
+function todayVerdict(sc){
+  if(!sc) return '还没记录';
+  if(sc.total>=85) return '状态在线';
+  if(sc.total>=70) return '整体不错';
+  if(sc.total>=55) return '有点疲惫';
+  return '需要调整';
+}
+
+/* ================= 建议引擎（规则驱动，不做诊断） ================= */
+/* ================= 备注关键词分析 =================
+ * 备注是自由文本（最多 40 字），这里按关键词归类，给出对应的生活作息建议。
+ * 只做习惯层面的提醒，不涉及诊断或用药建议；身体不适以医生意见为准。
+ */
+var NOTE_RULES=[
+  { key:'recover', icon:'🌤️', label:'身体在恢复', pri:1,
+    re:/痊愈|好转|好多了|恢复了|退烧了|已退烧|快好|低烧刚好|刚好转/,
+    tip:'备注提到在恢复中：运动量先按平时一半来，别急着补练，睡眠优先，一周内不要连着两天高强度。' },
+  { key:'sick', icon:'🤒', label:'身体不适 / 在服药', pri:2,
+    re:/低烧|发烧|发热|感冒|咳嗽|喉咙|咽痛|头痛|头晕|鼻塞|流鼻涕|拉肚子|腹泻|胃疼|胃痛|肠胃|过敏|不舒服|不适|生病|吃药|感冒药|退烧药|消炎|牙疼|牙痛|口腔溃疡|发炎/,
+    tip:'备注提到身体不适或在吃药：这几天别用评分苛责自己，运动先停或减半，多喝温水、按医嘱服药；持续不退或加重就去医院。' },
+  { key:'sleep_bad', icon:'🌙', label:'睡眠被打断', pri:3,
+    re:/熬夜|失眠|睡不着|没睡好|睡不好|早醒|噩梦|通宵|补觉|起不来|睡太久/,
+    tip:'备注提到睡不好：今晚把上床时间定在比昨天早 30 分钟，睡前 1 小时放下手机，比硬躺着更管用。' },
+  { key:'fatigue', icon:'😪', label:'容易累 / 犯困', pri:3.5,
+    re:/累|疲惫|乏|没精神|困|睡不醒|浑身没劲|提不起劲/,
+    tip:'备注提到累或犯困：先把今晚入睡时间提前 30 分钟，连续两天犯困多半是睡眠债，不是懒，别用咖啡硬顶。' },
+  { key:'caffeine', icon:'☕', label:'咖啡因摄入', pri:4,
+    re:/咖啡|奶茶|浓茶|能量饮料|美式|拿铁/,
+    tip:'备注提到咖啡或奶茶：下午 3 点后尽量别喝，一杯奶茶的咖啡因足够顶到半夜，会直接推后入睡时间。' },
+  { key:'diet', icon:'🍱', label:'饮食偏油 / 偏外卖', pri:5,
+    re:/外卖|快餐|炸鸡|汉堡|烧烤|火锅|泡面|零食|甜食|夜宵/,
+    tip:'备注提到外卖或重口味：不用戒，先加一份蔬菜或水果，把「主食＋肉」的组合拆开就够。' },
+  { key:'appetite', icon:'🥣', label:'胃口不好 / 在控制饮食', pri:6,
+    re:/没胃口|吃不下|不想吃|节食|减肥|减脂|少吃了/,
+    tip:'备注提到没胃口或在控制饮食：少量多餐比硬撑一顿更稳，蛋白质别断，别用不吃来换体重。' },
+  { key:'busy', icon:'💻', label:'忙 / 赶进度', pri:7,
+    re:/赶作业|加班|考试|复习|deadline|ddl|开会|项目|忙|通宵做/,
+    tip:'备注提到忙或赶进度：每 50 分钟起身 2 分钟，比连续硬坐更能救久坐分，晚上也更容易入睡。' },
+  { key:'stress', icon:'🫧', label:'情绪压力', pri:8,
+    re:/压力|焦虑|紧张|烦|崩溃|崩|emo|心情不好|难过|低落|哭|烦躁/,
+    tip:'备注提到情绪压力：睡前写三行「今天完成了什么」，比复盘没做完的更容易让大脑关机。' },
+  { key:'period', icon:'🌸', label:'生理期', pri:9,
+    re:/生理期|例假|姨妈|痛经|经期/,
+    tip:'备注提到生理期：这几天运动强度减半、以拉伸散步为主，补一点含铁和蛋白质的食物，别硬扛。' },
+  { key:'alcohol', icon:'🍺', label:'饮酒', pri:10,
+    re:/喝酒|啤酒|白酒|应酬|宿醉|酒局|喝了酒/,
+    tip:'备注提到喝酒：当晚深睡会被打折，第二天别安排高强度运动，多喝水，酒局尽量排在周末。' },
+  { key:'exercise', icon:'🏃', label:'有运动记录', pri:11,
+    re:/跑步|健身|走路|散步|游泳|瑜伽|打球|骑行|跳绳|拉伸|操场|爬山/,
+    tip:'备注里有运动记录：保持这种「顺手记一句」的习惯，一周后回看，最容易坚持的那个项目就是你的主线。' }
+];
+function noteTagsOf(text){
+  if(!text) return [];
+  return NOTE_RULES.filter(function(r){ return r.re.test(String(text)); });
+}
+function noteTips(text, limit){
+  var hit=noteTagsOf(text).sort(function(a,b){ return a.pri-b.pri; });
+  return hit.slice(0, limit||1).map(function(r){ return r.icon+' '+r.tip; });
+}
+function collectNoteTags(winRecs){
+  var map={};
+  winRecs.forEach(function(d){
+    var note=d.rec&&d.rec.note;
+    if(!note) return;
+    noteTagsOf(note).forEach(function(r){
+      if(!map[r.key]) map[r.key]={ rule:r, days:[] };
+      if(map[r.key].days.indexOf(d.date)<0) map[r.key].days.push(d.date);
+    });
+  });
+  return Object.keys(map).map(function(k){ return map[k]; })
+    .sort(function(a,b){ return a.rule.pri-b.rule.pri; });
+}
+function noteBlockHTML(winRecs){
+  var tags=collectNoteTags(winRecs);
+  if(!tags.length) return '';
+  var shown=tags.slice(0,4);
+  return '<div class="card">'+
+    '<div class="card-title">📝 备注里提到的 <span class="unit">按你写的备注自动归类</span></div>'+
+    shown.map(function(t){
+      return '<div class="tip-item"><span class="ti">'+t.rule.icon+'</span><span><b>'+t.rule.label+'</b> · '+t.days.length+' 天<br>'+t.rule.tip+'</span></div>';
+    }).join('')+
+    '<div class="hint" style="margin-top:8px">这几条只针对作息、运动、饮食等生活习惯；身体不适请以医生意见为准，本页不做任何诊断。</div>'+
+  '</div>';
+}
+function dayTip(rec){
+  const t=[];
+  if(rec.sleepHours!=null&&rec.sleepHours<6) t.push('昨晚睡得有点少，今天可以早点收尾，把觉补回来');
+  if(rec.sitHours!=null&&rec.sitHours>8) t.push('今天久坐有点久，睡前可以拉伸放松几分钟');
+  if(rec.exerciseMin!=null&&rec.exerciseMin===0) t.push('今天还没动起来，睡前十分钟拉伸也算数');
+  if(rec.waterMl!=null&&rec.waterMl<1000) t.push('今天喝水偏少，睡前再补一小杯');
+  if(rec.meals&&!rec.meals[0]) t.push('今天跳过了早餐，明早可以准备点简单的');
+  noteTips(rec.note, 1).forEach(function(x){ t.push(x); });
+  if(!t.length) t.push('今天各项都比较稳，继续保持');
+  return t;
+}
+function bedHourLabel(v){ const h=Math.round(v)%24; return h===0?'24点':h+'点'; }
+function generateTips(winRecs){
+  const filled=winRecs.filter(d=>d.rec);
+  const n=filled.length;
+  const tips=[];
+  if(!n) return [{type:'info', text:'还没有记录数据，先从今天开始填一份吧。'}];
+  /* 睡眠 */
+  const sleeps=filled.map(d=>d.rec.sleepHours).filter(v=>v!=null);
+  const aSleep=avg(sleeps);
+  let streak=0;
+  for(let i=filled.length-1;i>=0;i--){ const s=filled[i].rec.sleepHours; if(s!=null&&s<7) streak++; else break; }
+  if(streak>=3) tips.push({type:'sleep', text:`最近连续 ${streak} 天睡眠不足 7 小时，今晚可以优先把作息往前调 30 分钟到 1 小时。`});
+  else if(aSleep!=null&&aSleep<6.5) tips.push({type:'sleep', text:`最近平均睡眠 ${aSleep.toFixed(1)} 小时，略低于 7 小时，可以试着每天提前 15 分钟上床。`});
+  const beds=filled.map(d=>d.rec.bedTime).filter(Boolean).map(bedToHours);
+  if(beds.length>=3){
+    const aBed=avg(beds);
+    if(aBed>24) tips.push({type:'sleep', text:`最近平均入睡时间在${bedHourLabel(aBed)}以后，可以试试固定一个上床时间，睡前半小时少看手机。`});
+  }
+  /* 运动 */
+  const exDays=filled.filter(d=>(d.rec.exerciseMin||0)>0).length;
+  if(n>=3&&exDays<3) tips.push({type:'exercise', text:`最近 ${n} 天里运动了 ${exDays} 次，可以安排一次 30 分钟左右的低强度运动，比如快走、慢跑或拉伸。`});
+  /* 饮水 */
+  const waters=filled.map(d=>d.rec.waterMl).filter(v=>v!=null);
+  const aWater=avg(waters);
+  if(aWater!=null&&aWater<1200) tips.push({type:'water', text:`平均每天饮水约 ${Math.round(aWater)} ml，离 1500 ml 还差一点，可以随身带个水杯，下课顺手接水。`});
+  /* 饮食 */
+  const skipBreakfast=filled.filter(d=>d.rec.meals&&!d.rec.meals[0]).length;
+  if(n>=3&&skipBreakfast>=3) tips.push({type:'diet', text:`最近 ${skipBreakfast} 天没吃早餐，可以提前准备一些简单早餐，比如牛奶加面包、鸡蛋或燕麦。`});
+  const hasMeals=filled.filter(d=>d.rec.meals).length;
+  const regularDays=filled.filter(d=>d.rec.meals&&d.rec.meals.filter(Boolean).length===3).length;
+  if(n>=4&&hasMeals>=3&&regularDays<hasMeals/2) tips.push({type:'diet', text:`三餐规律的日子只有 ${regularDays}/${hasMeals} 天，尽量让吃饭时间稳定下来，饿过头反而容易暴饮暴食。`});
+  const takeout=filled.filter(d=>d.rec.foodType==='外卖为主'||d.rec.foodType==='快餐居多').length;
+  if(n>=4&&takeout>=Math.ceil(n/2)) tips.push({type:'diet', text:`最近外卖/快餐吃得比较多（${takeout}/${n} 天），条件允许的话可以多去几次食堂，或者周末自己做一顿。`});
+  /* 久坐 */
+  const sits=filled.map(d=>d.rec.sitHours).filter(v=>v!=null);
+  const aSit=avg(sits);
+  if(aSit!=null&&aSit>6) tips.push({type:'sit', text:`平均每天久坐约 ${aSit.toFixed(1)} 小时，可以每坐 1 小时就站起来活动几分钟，接水、伸个懒腰都算。`});
+  if(!tips.length) tips.push({type:'good', text:'这一周整体比较规律，继续保持，也可以把精力放在稳定作息上。'});
+  return tips;
+}
+
+/* ================= 周报：维度统计与总结 ================= */
+function dimStats(filled){
+  const st={};
+  filled.forEach(f=>{
+    const s=scoreDay(f.rec); if(!s) return;
+    for(const k in s.parts){
+      if(s.parts[k]!=null){ st[k]=st[k]||{got:0,full:0}; st[k].got+=s.parts[k]; st[k].full+=DIM_MAX[k]; }
+    }
+  });
+  return st;
+}
+function summaryTexts(filled){
+  const n=filled.length, t={};
+  const sl=filled.map(f=>f.rec.sleepHours).filter(v=>v!=null);
+  const aSleep=avg(sl);
+  t.sleep=sl.length?`平均睡眠 ${aSleep.toFixed(1)} 小时${aSleep>=7?'，基本达标':'，还没到 7 小时'}`:'—';
+  const ex=filled.map(f=>f.rec.exerciseMin).filter(v=>v!=null);
+  const exd=ex.filter(v=>v>0);
+  t.exercise=ex.length?`运动 ${exd.length} 次${exd.length?`，平均每次 ${Math.round(avg(exd))} 分钟`:''}`:'—';
+  const w=filled.map(f=>f.rec.waterMl).filter(v=>v!=null);
+  t.water=w.length?`平均每天饮水 ${Math.round(avg(w))} ml`:'—';
+  const hasMeals=filled.filter(f=>f.rec.meals).length;
+  const rg=filled.filter(f=>f.rec.meals&&f.rec.meals.filter(Boolean).length===3).length;
+  t.meals=hasMeals?`三餐规律 ${rg}/${hasMeals} 天`:'—';
+  const st=filled.map(f=>f.rec.sitHours).filter(v=>v!=null);
+  t.sit=st.length?`平均每天久坐 ${avg(st).toFixed(1)} 小时`:'—';
+  const both=[...filled.map(f=>f.rec.mood).filter(v=>v!=null), ...filled.map(f=>f.rec.bodyScore).filter(v=>v!=null)];
+  t.mood=both.length?`精神/身体状态平均 ${avg(both).toFixed(1)}/5`:'—';
+  return t;
+}
+function generateSummary(winRecs){
+  const filled=winRecs.filter(d=>d.rec);
+  const n=filled.length;
+  if(!n) return { good:[], bad:[], note:'还没有记录数据。' };
+  const st=dimStats(filled);
+  const ranked=Object.keys(DIM_NAME).filter(k=>st[k]&&st[k].full>0)
+    .map(k=>({k, rate:st[k].got/st[k].full}))
+    .sort((a,b)=>a.rate-b.rate);
+  const texts=summaryTexts(filled);
+  const good=[], bad=[];
+  if(ranked.length){
+    const best=ranked[ranked.length-1];
+    if(best.rate>=0.65) good.push(`${DIM_NAME[best.k]}：${texts[best.k]}${best.k==='sleep'?'，睡眠比较有保障':''}${best.k==='exercise'?'，运动习惯正在养成':''}${best.k==='water'?'，饮水基本达标':''}${best.k==='meals'?'，吃饭比较稳定':''}${best.k==='sit'?'，没有久坐过头':''}${best.k==='mood'?'，整体感觉不错':''}。`);
+    for(const r of ranked){ if(r.rate<0.6&&bad.length<2) bad.push(`${DIM_NAME[r.k]}：${texts[r.k]}。`); }
+    if(!bad.length&&ranked.length>1){
+      const worst=ranked[0];
+      if(worst.rate<best.rate-0.1) bad.push(`${DIM_NAME[worst.k]}：${texts[worst.k]}。`);
+    }
+    if(!good.length&&!bad.length) good.push('整体比较均衡，没有明显短板，继续保持。');
+  }
+  return { good, bad, note:n<3?`目前只记录了 ${n} 天，满 3 天以上总结更有参考价值。`:'' };
+}
+
+/* ================= 图表（Canvas 手绘，无外部依赖） ================= */
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function drawChart(cv,cfg){
+  if(!cv) return;
+  const dpr=window.devicePixelRatio||1;
+  const rect=cv.getBoundingClientRect();
+  if(rect.width===0) return;
+  cv.width=Math.round(rect.width*dpr); cv.height=Math.round(rect.height*dpr);
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,rect.width,rect.height);
+  const W=rect.width, H=rect.height;
+  const pad={l:40,r:14,t:22,b:24};
+  const iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const all=cfg.series.flatMap(s=>s.values.filter(v=>v!=null));
+  ctx.textAlign='center';
+  if(!all.length){
+    ctx.fillStyle='#9ca3af'; ctx.font='13px system-ui';
+    ctx.fillText('暂无数据，先去记录几天吧', W/2, H/2+4);
+    return;
+  }
+  let min,max;
+  if(cfg.type==='bar'){ min=0; max=Math.max(...all)*1.15; }
+  else{
+    min=Math.min(...all); max=Math.max(...all);
+    if(min===max){ min-=1; max+=1; }
+    const span=max-min; min-=span*0.18; max+=span*0.22;
+    if(cfg.yFloor!=null) min=Math.max(min,cfg.yFloor);
+  }
+  if(cfg.refLine!=null){
+    const span=(max-min)||1;
+    if(cfg.refLine>max) max=cfg.refLine+span*0.2;
+    if(cfg.refLine<min) min=cfg.refLine-span*0.2;
+  }
+  const n=cfg.series[0].values.length;
+  const X=i=>pad.l+(n<=1?iw/2:iw*i/(n-1));
+  const Y=v=>pad.t+ih*(1-(v-min)/(max-min));
+  /* 网格与 y 轴 */
+  ctx.font='10px system-ui';
+  for(let i=0;i<=4;i++){
+    const v=min+(max-min)*i/4, y=Y(v);
+    ctx.strokeStyle='#f0f1f2'; ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    ctx.fillStyle='#9ca3af'; ctx.textAlign='right';
+    ctx.fillText(cfg.fmtY?cfg.fmtY(v):Math.round(v), pad.l-6, y+3);
+  }
+  /* x 轴标签 */
+  ctx.textAlign='center';
+  cfg.labels.forEach((lb,i)=>{
+    const today=i===cfg.todayIdx;
+    ctx.fillStyle=today?cfg.series[0].color:'#9ca3af';
+    ctx.font=(today?'bold ':'')+'10px system-ui';
+    ctx.fillText(lb, X(i), H-8);
+  });
+  /* 参考线 */
+  if(cfg.refLine!=null){
+    const y=Y(cfg.refLine);
+    ctx.save(); ctx.setLineDash([4,3]); ctx.strokeStyle='#f59e0b';
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke(); ctx.restore();
+    if(cfg.refLabel){
+      ctx.fillStyle='#d97706'; ctx.font='9px system-ui'; ctx.textAlign='right';
+      ctx.fillText(cfg.refLabel, W-pad.r, y-4);
+    }
+  }
+  /* 数据系列 */
+  cfg.series.forEach(s=>{
+    if(cfg.type==='bar'){
+      const bw=Math.min(24, iw/n*0.45);
+      s.values.forEach((v,i)=>{
+        if(v==null) return;
+        const x=X(i), y=Y(v);
+        ctx.fillStyle=(i===cfg.todayIdx)?s.color:(s.color+'c0');
+        roundRect(ctx,x-bw/2,y,bw,Math.max(2,pad.t+ih-y),4); ctx.fill();
+        ctx.fillStyle='#6b7280'; ctx.font='9px system-ui'; ctx.textAlign='center';
+        ctx.fillText(cfg.fmtVal?cfg.fmtVal(v):v, x, y-4);
+      });
+    }else{
+      ctx.strokeStyle=s.color; ctx.lineWidth=2; ctx.beginPath();
+      let pen=false;
+      s.values.forEach((v,i)=>{
+        if(v==null){ pen=false; return; }
+        const x=X(i), y=Y(v);
+        if(pen) ctx.lineTo(x,y); else{ ctx.moveTo(x,y); pen=true; }
+      });
+      ctx.stroke();
+      s.values.forEach((v,i)=>{
+        if(v==null) return;
+        const x=X(i), y=Y(v);
+        ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,3.2,0,7); ctx.fill();
+        ctx.strokeStyle=s.color; ctx.lineWidth=2; ctx.stroke();
+        ctx.fillStyle='#6b7280'; ctx.font='9px system-ui'; ctx.textAlign='center';
+        ctx.fillText(cfg.fmtVal?cfg.fmtVal(v):v, x, y-8);
+      });
+    }
+  });
+  /* 图例 */
+  if(cfg.series.length>1){
+    let lx=pad.l+2;
+    cfg.series.forEach(s=>{
+      ctx.fillStyle=s.color; ctx.fillRect(lx,8,9,9);
+      ctx.fillStyle='#6b7280'; ctx.font='10px system-ui'; ctx.textAlign='left';
+      ctx.fillText(s.label, lx+13, 17);
+      lx+=13+ctx.measureText(s.label).width+14;
+    });
+  }
+}
+
+/* ================= 页面渲染 ================= */
+function ringSVG(score,color){
+  const r=26, C=2*Math.PI*r;
+  return `<svg viewBox="0 0 64 64" width="66" height="66"><circle cx="32" cy="32" r="${r}" fill="none" stroke="#eef1f0" stroke-width="7"/><circle cx="32" cy="32" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-score/100)}" transform="rotate(-90 32 32)"/><text x="32" y="37" text-anchor="middle" font-size="16" font-weight="700" fill="${color}">${score}</text></svg>`;
+}
+function dimBarsHTML(winRecs){
+  const filled=winRecs.filter(x=>x.rec);
+  if(!filled.length) return '';
+  const st=dimStats(filled);
+  return Object.keys(DIM_NAME).filter(k=>st[k]).map(k=>{
+    const r=Math.round(st[k].got/st[k].full*100);
+    const c=r>=70?'var(--green)':(r>=50?'var(--amber)':'var(--red)');
+    return `<div class="dim-row"><span>${DIM_NAME[k]}</span><div class="dim-bar"><i style="width:${r}%;background:${c}"></i></div><b>${r}%</b></div>`;
+  }).join('');
+}
+
+function renderHome(){
+  const today=fmtDate(new Date());
+  const rec=records[today];
+  const win=weekWindow();
+  const winRecs=win.map(d=>({date:d, rec:records[d]||null}));
+  const n=winRecs.filter(x=>x.rec).length;
+  const ws=weekScore(winRecs);
+  const hour=new Date().getHours();
+  const greet=hour<6?'夜深了':hour<11?'早上好':hour<14?'中午好':hour<18?'下午好':'晚上好';
+  let html='';
+  if(rec){
+    const sc=scoreDay(rec);
+    const color=gradeColor(sc?sc.total:null);
+    const cells=[
+      ['😴','睡眠', rec.sleepHours!=null?rec.sleepHours+' h':'—'],
+      ['🏃','运动', rec.exerciseMin!=null?rec.exerciseMin+' min':'—'],
+      ['💧','饮水', rec.waterMl!=null?rec.waterMl+' ml':'—'],
+      ['🍚','三餐', rec.meals?`${rec.meals.filter(Boolean).length}/3`:'—'],
+      ['🪑','久坐', rec.sitHours!=null?rec.sitHours+' h':'—'],
+      ['🙂','精神', rec.mood?MOOD_EMOJI[rec.mood-1]:'—']
+    ];
+    html+=`<div class="card">
+      <div class="home-top">
+        <div>
+          <div class="greet">${greet}，今天是 ${fmtMD(today)}</div>
+          <div class="verdict" style="color:${color}">${todayVerdict(sc)}</div>
+        </div>
+        ${sc?ringSVG(sc.total,color):''}
+      </div>
+      <div class="grid6">${cells.map(c=>`<div class="g6"><span class="gi">${c[0]}</span><span class="gl">${c[1]}</span><b>${c[2]}</b></div>`).join('')}</div>
+      ${rec.note?`<div class="note">📝 ${esc(rec.note)}</div>`:''}
+      <div class="tips">${dayTip(rec).map(t=>`<div class="tip">· ${t}</div>`).join('')}</div>
+      <button class="btn ghost" onclick="switchTab('log')">修改今天的数据</button>
+    </div>`;
+  }else{
+    html+=`<div class="card center">
+      <div class="empty-emoji">🌤️</div>
+      <div class="empty-title">今天还没记录</div>
+      <div class="empty-sub">花一分钟填几项数据，坚持 7 天<br>就能看到自己身体状态的真实变化</div>
+      <button class="btn primary" onclick="switchTab('log')">📝 记录今天</button>
+    </div>`;
+  }
+  html+=`<div class="card">
+    <div class="card-title">本周身体管理评分</div>
+    ${ws!=null?`<div class="week-score"><b style="color:${gradeColor(ws)}">${ws}</b><span class="unit">/ 100</span><em>${gradeLabel(ws)}</em></div>
+    <div class="dim-bars">${dimBarsHTML(winRecs)}</div>`
+    :'<div class="empty-sub">本周还没有记录，先去记录今天吧</div>'}
+    <div class="week-dots">${winRecs.map(x=>`<span class="wd ${x.rec?'has':''}">${'日一二三四五六'[parseDate(x.date).getDay()]}</span>`).join('')}</div>
+    <div class="hint">已记录 ${n}/7 天 · 评分口径：睡眠30 + 运动20 + 饮水15 + 三餐15 + 久坐10 + 主观状态10，按已填写项折算为百分制</div>
+  </div>
+  <div class="disclaimer">本工具仅做日常作息与生活习惯的记录整理，不涉及疾病诊断或医疗建议。</div>`;
+  $('#home-body').innerHTML=html;
+}
+
+/* ---------- 记录页 ---------- */
+function renderDateChips(){
+  const win=weekWindow();
+  const today=fmtDate(new Date());
+  const yest=fmtDate(new Date(Date.now()-864e5));
+  $('#date-chips').innerHTML=win.map(d=>{
+    const dt=parseDate(d);
+    const label=d===today?'今天':(d===yest?'昨天':'周'+'日一二三四五六'[dt.getDay()]);
+    const has=records[d]?'<i class="dot"></i>':'';
+    return `<button type="button" class="chip ${d===currentKey?'on':''}" data-d="${d}"><span>${label}</span><em>${dt.getMonth()+1}/${dt.getDate()}</em>${has}</button>`;
+  }).join('');
+  $$('#date-chips .chip').forEach(b=>{
+    b.onclick=()=>{ currentKey=b.dataset.d; renderDateChips(); loadForm(currentKey); };
+  });
+}
+function loadForm(key){
+  const r=records[key]||{};
+  const _draft=readDraft();
+  if(_draft && _draft.k===key && _draft.d){ const d=_draft.d;
+    if(d.bedTime) r.bedTime=d.bedTime; if(d.wakeTime) r.wakeTime=d.wakeTime;
+    if(d.sleepHours!=null) r.sleepHours=d.sleepHours; if(d.exerciseMin!=null) r.exerciseMin=d.exerciseMin;
+    if(d.waterMl) r.waterMl=d.waterMl; if(d.meals) r.meals=d.meals.slice();
+    if(d.foodType) r.foodType=d.foodType; if(d.sitHours!=null) r.sitHours=d.sitHours;
+    if(d.mood) r.mood=d.mood; if(d.bodyScore) r.bodyScore=d.bodyScore; if(d.note) r.note=d.note;
+  }
+  $('#f-bed').value=r.bedTime||'';
+  $('#f-wake').value=r.wakeTime||'';
+  $('#f-sleep').value=r.sleepHours!=null?r.sleepHours:'';
+  $('#f-sleep-auto').textContent='';
+  $('#f-exercise').value=r.exerciseMin!=null?r.exerciseMin:'';
+  $('#f-water').value=r.waterMl||0;
+  $('#f-water-val').textContent=(r.waterMl||0)+' ml';
+  $('#f-sit').value=r.sitHours!=null?r.sitHours:'';
+  $('#f-note').value=r.note||'';
+  formState.meals=r.meals?[...r.meals]:[false,false,false];
+  formState.foodType=r.foodType||null;
+  formState.mood=r.mood||0;
+  formState.body=r.bodyScore||0;
+  renderToggles();
+}
+function renderToggles(){
+  [0,1,2].forEach(i=>$('#meal-'+i).classList.toggle('on',!!formState.meals[i]));
+  $$('#mood-btns button').forEach(b=>b.classList.toggle('on',+b.dataset.v===formState.mood));
+  $$('#body-btns button').forEach(b=>b.classList.toggle('on',+b.dataset.v===formState.body));
+  $$('#food-chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.v===formState.foodType));
+  const exv=parseFloat($('#f-exercise').value);
+  $$('#ex-chips .chip').forEach(c=>c.classList.toggle('on',parseFloat(c.dataset.v)===exv));
+}
+function collectForm(){
+  const rec={};
+  const bed=$('#f-bed').value, wake=$('#f-wake').value;
+  if(bed) rec.bedTime=bed;
+  if(wake) rec.wakeTime=wake;
+  let sh=parseFloat($('#f-sleep').value);
+  if(isNaN(sh)&&bed&&wake){ const c=calcSleep(bed,wake); if(c!=null) sh=c; }
+  if(!isNaN(sh)) rec.sleepHours=Math.min(16,Math.max(0,sh));
+  const ex=parseFloat($('#f-exercise').value);
+  if(!isNaN(ex)) rec.exerciseMin=Math.max(0,Math.min(600,Math.round(ex)));
+  const wv=parseInt($('#f-water').value,10);
+  if(wv>0) rec.waterMl=wv;
+  if(formState.meals.some(Boolean)) rec.meals=[...formState.meals];
+  if(formState.foodType) rec.foodType=formState.foodType;
+  const sit=parseFloat($('#f-sit').value);
+  if(!isNaN(sit)) rec.sitHours=Math.max(0,Math.min(18,sit));
+  if(formState.mood) rec.mood=formState.mood;
+  if(formState.body) rec.bodyScore=formState.body;
+  const note=$('#f-note').value.trim();
+  if(note) rec.note=note;
+  return rec;
+}
+function saveDay(){
+  const rec=collectForm();
+  const hasData=['bedTime','wakeTime','sleepHours','exerciseMin','waterMl','meals','foodType','sitHours','mood','bodyScore','note'].some(k=>rec[k]!=null);
+  if(!hasData){ toast('先填一点数据再保存吧'); return; }
+  rec.updatedAt=Date.now();
+  records[currentKey]=rec;
+  saveRecords(records);
+  deskSyncDay(currentKey);
+  clearDraft();
+  if(onlineMode){
+    onlineDirty=true;
+    syncDayOnline(currentKey, rec).then(function(ok){
+      if(ok){ onlineDirty=false; }
+      else { setSyncState('offline'); }
+    });
+    toast('保存中…');
+  } else {
+    toast('已保存 ✓');
+  }
+  updateTopbar();
+  setTimeout(()=>switchTab('home'),550);
+}
+
+/* ---------- 趋势页 ---------- */
+function mealGridHTML(win,recs){
+  const rows=win.map((d,i)=>{
+    const r=recs[i], dt=parseDate(d);
+    const cells=[0,1,2].map(j=>{
+      if(!r||!r.meals) return '<span class="mg none">–</span>';
+      return r.meals[j]?'<span class="mg on">●</span>':'<span class="mg off">○</span>';
+    }).join('');
+    return `<div class="mg-row ${i===win.length-1?'today':''}"><span class="mg-date">${dt.getMonth()+1}/${dt.getDate()} 周${'日一二三四五六'[dt.getDay()]}</span>${cells}</div>`;
+  }).join('');
+  return `<div class="card">
+    <div class="card-title">三餐打卡 <span class="unit">● 吃了　○ 没吃　– 未记录</span></div>
+    <div class="mg-head"><span class="mg-date"></span><span>早</span><span>午</span><span>晚</span></div>
+    ${rows}
+  </div>`;
+}
+function renderTrend(){
+  const win=weekWindow();
+  const today=fmtDate(new Date());
+  const todayIdx=win.lastIndexOf(today);
+  const labels=win.map(d=>'日一二三四五六'[parseDate(d).getDay()]);
+  const recs=win.map(d=>records[d]||null);
+  const n=recs.filter(Boolean).length;
+  $('#trend-body').innerHTML=`
+    <div class="card" style="padding:11px 15px">
+      <div class="hint" style="margin:0">📊 最近 7 天（${fmtMD(win[0]).replace(' · ','')} 起）· 已记录 <b>${n}/7</b> 天，图表只使用你真实填写的数据</div>
+    </div>
+    <div class="card"><div class="card-title">睡眠时长 <span class="unit">小时</span></div><canvas id="c-sleep" class="chart"></canvas></div>
+    <div class="card"><div class="card-title">入睡时间 <span class="unit">越往上睡得越晚</span></div><canvas id="c-bed" class="chart"></canvas></div>
+    <div class="card"><div class="card-title">运动时长 <span class="unit">分钟</span></div><canvas id="c-ex" class="chart"></canvas></div>
+    <div class="card"><div class="card-title">饮水量 <span class="unit">ml</span></div><canvas id="c-water" class="chart"></canvas></div>
+    <div class="card"><div class="card-title">久坐时间 <span class="unit">小时</span></div><canvas id="c-sit" class="chart"></canvas></div>
+    <div class="card"><div class="card-title">精神状态 &amp; 身体自评 <span class="unit">1-5 分</span></div><canvas id="c-mood" class="chart"></canvas></div>
+    ${mealGridHTML(win,recs)}
+  `;
+  requestAnimationFrame(()=>{
+    drawChart($('#c-sleep'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r?r.sleepHours:null),color:'#6366f1',label:'睡眠'}],refLine:7,refLabel:'7h',fmtVal:v=>v.toFixed(1)});
+    drawChart($('#c-bed'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r&&r.bedTime?bedToHours(r.bedTime):null),color:'#8b5cf6',label:'入睡'}],refLine:24,refLabel:'24:00',fmtY:v=>{const h=Math.round(v)%24;return h===0?'24点':h+'点';},fmtVal:bedLabel});
+    drawChart($('#c-ex'),{type:'bar',labels,todayIdx,series:[{values:recs.map(r=>r?r.exerciseMin:null),color:'#10b981',label:'运动'}],refLine:30,refLabel:'30min',fmtVal:v=>Math.round(v)});
+    drawChart($('#c-water'),{type:'bar',labels,todayIdx,series:[{values:recs.map(r=>r?r.waterMl:null),color:'#06b6d4',label:'饮水'}],refLine:1500,refLabel:'1500ml',fmtY:v=>Math.round(v/100)*100,fmtVal:v=>Math.round(v)});
+    drawChart($('#c-sit'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r?r.sitHours:null),color:'#f59e0b',label:'久坐'}],refLine:6,refLabel:'6h',fmtVal:v=>v.toFixed(1)});
+    drawChart($('#c-mood'),{type:'line',labels,todayIdx,yFloor:0,series:[{values:recs.map(r=>r?r.mood:null),color:'#10b981',label:'精神'},{values:recs.map(r=>r?r.bodyScore:null),color:'#3b82f6',label:'身体'}],fmtY:v=>Math.round(v),fmtVal:v=>Math.round(v)});
+  });
+}
+
+/* ---------- 周报页 ---------- */
+function renderReport(){
+  const win=weekWindow();
+  const winRecs=win.map(d=>({date:d, rec:records[d]||null}));
+  const filled=winRecs.filter(x=>x.rec);
+  const n=filled.length;
+  const ws=weekScore(winRecs);
+  if(!n){
+    $('#report-body').innerHTML=`<div class="card center">
+      <div class="empty-emoji">📋</div>
+      <div class="empty-title">还没有可统计的数据</div>
+      <div class="empty-sub">先记录几天，这里会自动生成<br>一周统计、身体管理评分和改进建议</div>
+      <button class="btn primary" onclick="switchTab('log')">📝 去记录</button>
+    </div>`;
+    return;
+  }
+  const sleeps=filled.map(f=>f.rec.sleepHours).filter(v=>v!=null);
+  const exMins=filled.map(f=>f.rec.exerciseMin).filter(v=>v!=null);
+  const exd=exMins.filter(v=>v>0);
+  const waters=filled.map(f=>f.rec.waterMl).filter(v=>v!=null);
+  const sits=filled.map(f=>f.rec.sitHours).filter(v=>v!=null);
+  const moods=[...filled.map(f=>f.rec.mood).filter(v=>v!=null),...filled.map(f=>f.rec.bodyScore).filter(v=>v!=null)];
+  const hasMeals=filled.filter(f=>f.rec.meals).length;
+  const rg=filled.filter(f=>f.rec.meals&&f.rec.meals.filter(Boolean).length===3).length;
+  const stats=[
+    ['😴','平均睡眠', sleeps.length?avg(sleeps).toFixed(1)+' h':'—'],
+    ['🏃','运动次数', exMins.length?exd.length+' 次':'—'],
+    ['⏱️','平均每次运动', exd.length?Math.round(avg(exd))+' min':'—'],
+    ['💧','平均饮水', waters.length?Math.round(avg(waters))+' ml':'—'],
+    ['🍚','三餐规律', hasMeals?`${rg}/${hasMeals} 天`:'—'],
+    ['🪑','平均久坐', sits.length?avg(sits).toFixed(1)+' h':'—'],
+    ['🙂','状态均值', moods.length?avg(moods).toFixed(1)+'/5':'—'],
+    ['📅','记录天数', `${n}/7 天`]
+  ];
+  const sum=generateSummary(winRecs);
+  const tips=generateTips(winRecs);
+  const color=gradeColor(ws);
+  $('#report-body').innerHTML=`
+    <div class="card">
+      <div class="card-title">一周数据总览</div>
+      <div class="stat-grid">${stats.map(s=>`<div class="stat"><span class="si">${s[0]}</span><div><span class="sl">${s[1]}</span><b>${s[2]}</b></div></div>`).join('')}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">本周身体管理评分</div>
+      <div class="report-score">
+        <div class="big-score" style="color:${color}">${ws!=null?ws:'—'}<span>/100</span></div>
+        <div>
+          <div class="grade" style="color:${color}">${gradeLabel(ws)}</div>
+          <div class="hint">按已记录的 ${n} 天平均计算</div>
+        </div>
+      </div>
+      <div class="day-scores">${winRecs.map(x=>{
+        const s=x.rec?scoreDay(x.rec):null;
+        return `<div class="ds ${s?'':'none'}"><b style="color:${s?gradeColor(s.total):'var(--t3)'}">${s?s.total:'–'}</b><span>${'日一二三四五六'[parseDate(x.date).getDay()]}</span></div>`;
+      }).join('')}</div>
+      <div class="dim-bars">${dimBarsHTML(winRecs)}</div>
+      <div class="hint">评分口径：睡眠30 + 运动20 + 饮水15 + 三餐15 + 久坐10 + 主观状态10；当天未填的项不参与折算，避免拉低分数</div>
+    </div>
+    <div class="card">
+      <div class="card-title">本周总结</div>
+      ${sum.note?`<div class="hint" style="margin-bottom:6px">${sum.note}</div>`:''}
+      <div class="sum-block"><b>✅ 做得比较好</b>${sum.good.length?sum.good.map(t=>`<div class="sum-item">${t}</div>`).join(''):'<div class="sum-item">本周整体都有提升空间，先从最容易改的一项开始。</div>'}</div>
+      <div class="sum-block"><b>🎯 优先改善</b>${sum.bad.length?sum.bad.map(t=>`<div class="sum-item">${t}</div>`).join(''):'<div class="sum-item">没有明显短板，保持现状即可。</div>'}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">生活习惯建议</div>
+      ${tips.map(t=>`<div class="tip-item"><span class="ti">${TIP_ICON[t.type]||'💡'}</span><span>${t.text}</span></div>`).join('')}
+      <div class="hint" style="margin-top:8px">建议由规则基于你填写的数据生成，仅涉及作息、运动、饮食等生活习惯，不构成医疗建议</div>
+    </div>
+    ${noteBlockHTML(winRecs)}
+    <div class="disclaimer">本工具仅做日常作息与生活习惯的记录整理，所有评分与建议只基于你填写的数据，不构成任何医疗诊断或治疗建议。</div>
+  `;
+}
+
+
+/* ================= CSV 导入 / 导出 =================
+ * 接口约定（表头顺序不限，缺列可省）：
+ * 日期,入睡时间,起床时间,睡眠时长,运动时长,饮水量,早餐,午餐,晚餐,主要食物,久坐时长,精神状态,身体自评,备注
+ * 也可以直接用 window.healthBuddy.importCSV(csv文本) 编程式导入。
+ */
+var CSV_HEADERS = ['日期','入睡时间','起床时间','睡眠时长(小时)','运动时长(分钟)','饮水量(ml)','早餐(吃了填是，没吃填否)','午餐(吃了填是，没吃填否)','晚餐(吃了填是，没吃填否)','主要食物(食堂/外卖/自己做/快餐/均衡)','久坐时长(小时)','精神状态(1-5)','身体自评(1-5)','备注'];
+var CSV_ALIAS = {
+  '日期':'日期','date':'日期','记录日期':'日期',
+  '入睡时间':'入睡时间','入睡':'入睡时间','上床时间':'入睡时间','睡觉时间':'入睡时间',
+  '起床时间':'起床时间','起床':'起床时间',
+  '睡眠时长':'睡眠时长','睡眠':'睡眠时长','睡眠小时':'睡眠时长',
+  '运动时长':'运动时长','运动':'运动时长','运动分钟':'运动时长',
+  '饮水量':'饮水量','饮水':'饮水量','喝水':'饮水量',
+  '早餐':'早餐','午餐':'午餐','晚餐':'晚餐',
+  '主要食物':'主要食物','饮食类型':'主要食物','吃什么':'主要食物','饮食':'主要食物',
+  '久坐时长':'久坐时长','久坐':'久坐时长','久坐小时':'久坐时长',
+  '精神状态':'精神状态','精神':'精神状态','心情':'精神状态',
+  '身体自评':'身体自评','身体':'身体自评','身体评分':'身体自评',
+  '备注':'备注','note':'备注'
+};
+function normHead(s){
+  /* 先剥掉括号里的单位/说明，再清符号、去尾部单位：睡眠时长(小时) → 睡眠时长 */
+  return String(s==null?'':s)
+    .replace(/[（(][^（）()]*[）)]/g,'')
+    .replace(/[\ufeff\s\u3000()（）\[\]:：*、\/\\]/g,'')
+    .replace(/(ml|ML|毫升|小时|分钟|h|min|分)$/,'').toLowerCase();
+}
+var CSV_HEAD_MAP = (function(){
+  var m={};
+  for(var k in CSV_ALIAS){ m[normHead(k)] = CSV_ALIAS[k]; }
+  return m;
+})();
+function csvHeaderKey(h){ return CSV_HEAD_MAP[normHead(h)] || null; }
+
+/* 简单但完整的 CSV 解析：支持引号包裹、双引号转义、CRLF，自动识别分隔符 */
+function parseCSVText(text){
+  var src = String(text==null?'':text).replace(/^\ufeff/,'');
+  var firstLine = src.split(/\r?\n/)[0] || '';
+  var delim = ',';
+  var best = 1;
+  [',',';','\t'].forEach(function(d){
+    var n = firstLine.split(d).length;
+    if(n > best){ best = n; delim = d; }
+  });
+  var rows=[], row=[], cell='', inQ=false;
+  for(var i=0;i<src.length;i++){
+    var c=src[i];
+    if(inQ){
+      if(c==='"'){
+        if(src[i+1]==='"'){ cell+='"'; i++; }
+        else inQ=false;
+      } else cell+=c;
+    }else{
+      if(c==='"') inQ=true;
+      else if(c===delim){ row.push(cell); cell=''; }
+      else if(c==='\n'){ row.push(cell); rows.push(row); row=[]; cell=''; }
+      else if(c==='\r'){ /* 忽略 */ }
+      else cell+=c;
+    }
+  }
+  if(cell.length || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(function(r){ return r.some(function(c){ return String(c).trim()!==''; }); });
+}
+
+function csvToNum(v){
+  if(v==null) return null;
+  var s=String(v).replace(/[\s,%]/g,'').replace(/(ml|ML|毫升|小时|h|H|分钟|min|分)$/,'');
+  if(!s||s==='-'||s==='—') return null;
+  var n=parseFloat(s);
+  return isNaN(n)?null:n;
+}
+function csvToBool(v){
+  var s=String(v==null?'':v).trim().toLowerCase();
+  if(!s) return null;
+  if(['1','true','是','有','y','yes','✓','√','吃了','吃','on'].indexOf(s)>=0) return true;
+  if(['0','false','否','无','n','no','×','x','没吃','没','off'].indexOf(s)>=0) return false;
+  /* 容忍手输错拼：TURE / TREU / FLASE 这类，按首字母兜底判断 */
+  if(s.length<=6 && s.charAt(0)==='t') return true;
+  if(s.length<=6 && s.charAt(0)==='f') return false;
+  return null;
+}
+function csvDate(v){
+  var s=String(v==null?'':v).trim();
+  if(!s) return null;
+  var m=s.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if(!m) return null;
+  var y=+m[1], mo=+m[2], d=+m[3];
+  if(mo<1||mo>12||d<1||d>31) return null;
+  return y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+function csvTime(v){
+  var s=String(v==null?'':v).trim();
+  if(!s) return null;
+  var m=s.match(/^(\d{1,2})[:：](\d{1,2})/);
+  if(!m) return null;
+  var h=+m[1], mi=+m[2];
+  if(h>23||mi>59) return null;
+  return String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');
+}
+function csvFood(v){
+  var s=String(v==null?'':v).trim();
+  if(!s) return null;
+  for(var i=0;i<FOOD_TYPES.length;i++){ if(s===FOOD_TYPES[i]) return s; }
+  for(var j=0;j<FOOD_TYPES.length;j++){ if(s.indexOf(FOOD_TYPES[j])>=0) return FOOD_TYPES[j]; }
+  if(/食堂/.test(s)) return '食堂为主';
+  if(/外卖|点餐|订餐/.test(s)) return '外卖为主';
+  if(/自己做|自己煮|下厨|家里做/.test(s)) return '自己做饭';
+  if(/快餐|汉堡|速食|麦当劳|肯德基/.test(s)) return '快餐居多';
+  if(/均衡|搭配|健康/.test(s)) return '均衡搭配';
+  return null;
+}
+function csvRowToRecord(headIdx, row){
+  var g = function(name){
+    var i=headIdx[name];
+    if(i==null) return null;
+    return row[i]==null ? '' : String(row[i]).trim();
+  };
+  var d=csvDate(g('日期'));
+  if(!d) return null;
+  var rec={};
+  var bed=csvTime(g('入睡时间')); if(bed) rec.bedTime=bed;
+  var wake=csvTime(g('起床时间')); if(wake) rec.wakeTime=wake;
+  var sh=csvToNum(g('睡眠时长'));
+  if(sh==null && bed && wake){ var c=calcSleep(bed,wake); if(c!=null) sh=c; }
+  if(sh!=null) rec.sleepHours=Math.round(Math.min(16,Math.max(0,sh))*10)/10;
+  var ex=csvToNum(g('运动时长')); if(ex!=null) rec.exerciseMin=Math.max(0,Math.min(600,Math.round(ex)));
+  var wt=csvToNum(g('饮水量')); if(wt!=null) rec.waterMl=Math.max(0,Math.min(5000,Math.round(wt)));
+  var b=csvToBool(g('早餐')), l=csvToBool(g('午餐')), din=csvToBool(g('晚餐'));
+  /* 至少有一顿「吃了」才算记了三餐；三列都是否/空值时视为这天没记三餐，不写成 0/3 */
+  /* 三列全空=这天没记三餐；只要有一列填了是/否，就按是/否记录，空着的那顿按没吃算 */
+  if(b!=null||l!=null||din!=null) rec.meals=[!!b,!!l,!!din];
+  var food=csvFood(g('主要食物')); if(food) rec.foodType=food;
+  var sit=csvToNum(g('久坐时长')); if(sit!=null) rec.sitHours=Math.max(0,Math.min(24,sit));
+  var mood=csvToNum(g('精神状态')); if(mood!=null) rec.mood=Math.min(5,Math.max(1,Math.round(mood)));
+  var body=csvToNum(g('身体自评')); if(body!=null) rec.bodyScore=Math.min(5,Math.max(1,Math.round(body)));
+  var note=g('备注'); if(note) rec.note=note.slice(0,40);
+  rec['_date']=d;
+  return rec;
+}
+function setCsvStatus(msg){
+  var el=document.getElementById('csv-status');
+  if(el) el.textContent=msg||'';
+}
+function applyImport(recMap, badCount, silent, allFalseMeals){
+  var dates=Object.keys(recMap).sort();
+  if(!dates.length) return {ok:false, error:'没有解析到有效日期行'};
+  var existing=dates.filter(function(d){ return !!records[d]; }).length;
+  if(existing && !silent){
+    if(!confirm('这次要导入 '+dates.length+' 天数据，其中 '+existing+' 天已有记录（会按 CSV 内容整条覆盖），继续吗？')){
+      return {ok:false, cancelled:true};
+    }
+  }
+  var win=weekWindow();
+  var inWin=dates.filter(function(d){ return win.indexOf(d)>=0; }).length;
+  dates.forEach(function(d){
+    var old=records[d];
+    var rec=recMap[d];
+    if(old && old._rid) rec._rid=old._rid;
+    rec.updatedAt=Date.now();
+    records[d]=rec;
+  });
+  saveRecords(records);
+  clearDraft();
+  if(!deskBooting) deskSyncAll(dates);
+  refreshAll();
+  var head='已导入 '+dates.length+' 天（近 7 天 '+inWin+' 天'+(badCount?('，跳过 '+badCount+' 行无效日期'):'')+'）';
+  if(allFalseMeals) head+='；其中 '+allFalseMeals+' 天三餐列都是 FALSE/否/0，已按「没记三餐」处理（真要记成没吃，请在记录页勾选后保存）';
+  if(onlineMode && db){
+    setCsvStatus(head+'，正在同步到云端…');
+    var chain=Promise.resolve(), done=0, fail=0;
+    dates.forEach(function(d){
+      chain=chain.then(function(){ return syncDayOnline(d, records[d]); })
+        .then(function(ok){ if(ok) done++; else fail++; });
+    });
+    chain.then(function(){
+      onlineDirty=false;
+      setCsvStatus(head+' · 云端已同步 '+done+' 天'+(fail?('，失败 '+fail+' 天'):''));
+      refreshAll();
+    });
+  }else{
+    setCsvStatus(head+' · 本地模式已保存');
+  }
+  return {ok:true, days:dates.length, inWindow:inWin, overwritten:existing};
+}
+function ingestCSVText(text, silent){
+  var rows=parseCSVText(text);
+  if(rows.length<2) return {ok:false, error:'CSV 里只有表头，没有数据行'};
+  var head=rows[0], headIdx={}, unknown=[];
+  head.forEach(function(h,i){
+    var k=csvHeaderKey(h);
+    if(k){ if(headIdx[k]==null) headIdx[k]=i; }
+    else if(String(h).trim()) unknown.push(String(h).trim());
+  });
+  if(headIdx['日期']==null){
+    return {ok:false, error:'没找到「日期」列，请把表头第一列写成 日期（YYYY-MM-DD）'};
+  }
+  var recMap={}, bad=0;
+  rows.slice(1).forEach(function(r){
+    var rec=csvRowToRecord(headIdx, r);
+    if(rec) recMap[rec['_date']]=rec;
+    else bad++;
+  });
+  if(unknown.length) setCsvStatus('已忽略未识别的列：'+unknown.join('、'));
+  var allFalseMeals=0;
+  Object.keys(recMap).forEach(function(d){ if(recMap[d]['_mealsAllFalse']){ allFalseMeals++; delete recMap[d]['_mealsAllFalse']; } });
+  var res=applyImport(recMap, bad, silent, allFalseMeals);
+  res.allFalseMeals=allFalseMeals;
+  res.unknown=unknown;
+  res.bad=bad;
+  res.dates=Object.keys(recMap);
+  return res;
+}
+function decodeCSVBuffer(buf){
+  try{
+    return new TextDecoder('utf-8',{fatal:true}).decode(buf);
+  }catch(e){
+    try{ return new TextDecoder('gb18030').decode(buf); }
+    catch(e2){ return new TextDecoder('utf-8').decode(buf); }
+  }
+}
+function importCSVFile(file){
+  setCsvStatus('正在读取 '+file.name+' …');
+  var reader=new FileReader();
+  reader.onerror=function(){ setCsvStatus('文件读取失败，请重试'); };
+  reader.onload=function(){
+    var res;
+    try{
+      res=ingestCSVText(decodeCSVBuffer(reader.result), false);
+    }catch(e){
+      setCsvStatus('解析失败：'+e.message);
+      return;
+    }
+    if(!res.ok && !res.cancelled) setCsvStatus('导入未完成：'+res.error);
+    else if(res.cancelled) setCsvStatus('已取消导入');
+  };
+  reader.readAsArrayBuffer(file);
+}
+function csvCell(v){
+  var s=(v==null?'':String(v));
+  return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function exportRecordsCSV(){
+  var dates=Object.keys(records).sort();
+  if(!dates.length){ toast('还没有记录可以导出'); return; }
+  var lines=[CSV_HEADERS.join(',')];
+  dates.forEach(function(d){
+    var r=records[d]||{};
+    var m=r.meals||null;
+    lines.push([
+      d, r.bedTime||'', r.wakeTime||'',
+      r.sleepHours!=null?r.sleepHours:'', r.exerciseMin!=null?r.exerciseMin:'', r.waterMl!=null?r.waterMl:'',
+      m ? (m[0]?'是':'否') : '', m ? (m[1]?'是':'否') : '', m ? (m[2]?'是':'否') : '',
+      r.foodType||'', r.sitHours!=null?r.sitHours:'', r.mood!=null?r.mood:'', r.bodyScore!=null?r.bodyScore:'',
+      r.note||''
+    ].map(csvCell).join(','));
+  });
+  downloadTextCSV('健康Buddy-记录-'+fmtDate(new Date())+'.csv', '\ufeff'+lines.join('\r\n'));
+  toast('已导出 '+dates.length+' 天记录');
+}
+function downloadTemplateCSV(){
+  var body=[
+    CSV_HEADERS.join(','),
+    '2026-10-20,00:30,07:20,6.8,30,1500,TRUE,TRUE,TRUE,食堂为主,8,3,3,示例行·可整行删除',
+    '2026-10-21,23:50,07:30,7.6,45,1800,TRUE,TRUE,FALSE,自己做饭,6.5,4,4,'
+  ].join('\r\n');
+  downloadTextCSV('健康Buddy-CSV模板.csv', '\ufeff'+body+'\r\n');
+  toast('模板已下载');
+}
+function downloadTextCSV(name, text){
+  var blob=new Blob([text],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); if(a.parentNode) a.parentNode.removeChild(a); },300);
+}
+
+/* 编程式接口：window.healthBuddy.importCSV(csv文本) / .exportCSV() / .getRecords() */
+window.healthBuddy = {
+  importCSV: function(text, opts){ return ingestCSVText(text, !!(opts&&opts.silent)); },
+  importFile: function(file){ importCSVFile(file); },
+  exportCSV: function(){ exportRecordsCSV(); },
+  headers: CSV_HEADERS.slice(),
+  getRecords: function(){ return JSON.parse(JSON.stringify(records)); }
+};
+
+/* ================= 桌面版：与本机 CSV 文档双向同步 =================
+ * 只在 Electron 桌面版生效（window.healthDesktop 由 preload 注入）。
+ * 网页版没有这个对象，下面所有逻辑自动跳过，不影响线上页面。
+ */
+var DESK=(typeof window!=='undefined' && window.healthDesktop) ? window.healthDesktop : null;
+var deskBooting=false;
+function deskCells(dateStr){
+  var r=records[dateStr]||{};
+  var m=r.meals||null;
+  return [dateStr, r.bedTime||'', r.wakeTime||'',
+    r.sleepHours!=null?r.sleepHours:'', r.exerciseMin!=null?r.exerciseMin:'', r.waterMl!=null?r.waterMl:'',
+    m?(m[0]?'是':'否'):'', m?(m[1]?'是':'否'):'', m?(m[2]?'是':'否'):'',
+    r.foodType||'', r.sitHours!=null?r.sitHours:'', r.mood!=null?r.mood:'', r.bodyScore!=null?r.bodyScore:'',
+    r.note||''];
+}
+function setDeskState(msg){
+  var el=document.getElementById('desk-status');
+  if(el) el.textContent=msg||'';
+}
+function deskSyncDay(d){
+  if(!DESK||!DESK.upsertDay) return;
+  try{
+    DESK.upsertDay({ date:d, cells:deskCells(d) }).then(function(res){
+      if(res&&res.error) setDeskState('⚠️ 文档写入失败：'+res.error+'（是不是在 Excel 里开着？）');
+    }).catch(function(){});
+  }catch(e){}
+}
+function deskSyncAll(dates){
+  if(!DESK||!DESK.upsertDay) return;
+  dates.forEach(deskSyncDay);
+}
+function deskDropDay(d){
+  if(!DESK||!DESK.removeDay) return;
+  try{ DESK.removeDay({ date:d }); }catch(e){}
+}
+function deskBootSync(){
+  if(!DESK||!DESK.readCsv){ setDeskState(''); return; }
+  var localSnapshot=JSON.parse(JSON.stringify(records));
+  deskBooting=true;
+  DESK.readCsv().then(function(r){
+    if(!r||r.error){
+      deskBooting=false;
+      setDeskState('⚠️ 文档同步不可用：'+((r&&r.error)||'未知原因'));
+      return;
+    }
+    var res=null;
+    if(r.text && r.text.trim()){ try{ res=ingestCSVText(r.text,true); }catch(e){} }
+    var csvDates=(res&&res.dates)?res.dates:[];
+    deskBooting=false;
+    setDeskState('📄 已关联文档：'+r.path+'（保存即写入）');
+    Object.keys(localSnapshot).forEach(function(d){
+      if(csvDates.indexOf(d)<0) deskSyncDay(d);
+    });
+    refreshAll();
+  }).catch(function(){ deskBooting=false; setDeskState('⚠️ 文档同步失败'); });
+}
+
+/* ================= 应用框架 ================= */
+let toastTimer=null;
+function toast(msg){
+  const t=$('#toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),1800);
+}
+function updateTopbar(){
+  const win=weekWindow();
+  const a=parseDate(win[0]), b=parseDate(win[6]);
+  $('#topbar-range').textContent=`${a.getMonth()+1}月${a.getDate()}日 – ${b.getMonth()+1}月${b.getDate()}日`;
+  const n=win.filter(d=>records[d]).length;
+  $('#topbar-count').textContent=`${n}/7 天`;
+}
+function switchTab(name){
+  $$('.page').forEach(p=>p.classList.remove('active'));
+  $('#page-'+name).classList.add('active');
+  $$('.tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
+  updateTopbar();
+  if(name==='home') renderHome();
+  if(name==='log'){ renderDateChips(); loadForm(currentKey); }
+  if(name==='trend') renderTrend();
+  if(name==='report') renderReport();
+  window.scrollTo(0,0);
+}
+
+function init(){
+  /* 情绪/自评按钮 */
+  $('#mood-btns').innerHTML=MOOD_EMOJI.map((e,i)=>`<button type="button" data-v="${i+1}">${e}</button>`).join('');
+  $('#body-btns').innerHTML=BODY_LABEL.map((t,i)=>`<button type="button" data-v="${i+1}">${t}</button>`).join('');
+  /* 运动快捷 chips */
+  $('#ex-chips').innerHTML=EX_CHIPS.map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没运动':v+' min'}</button>`).join('');
+  /* 饮食类型 chips */
+  $('#food-chips').innerHTML=FOOD_TYPES.map(f=>`<button type="button" class="chip" data-v="${f}">${f}</button>`).join('');
+  /* 事件绑定 */
+  $$('.tabbar button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+  $('#f-bed').addEventListener('change',autoSleepUI);
+  $('#f-wake').addEventListener('change',autoSleepUI);
+  $('#f-water').addEventListener('input',e=>{ $('#f-water-val').textContent=e.target.value+' ml'; });
+  ['f-bed','f-wake','f-sleep','f-exercise','f-water','f-sit','f-note'].forEach(function(id){ document.getElementById(id).addEventListener('input',saveDraft); });
+  $('#f-exercise').addEventListener('input',renderToggles);
+  $$('#ex-chips .chip').forEach(c=>c.onclick=()=>{ $('#f-exercise').value=c.dataset.v; renderToggles(); saveDraft(); });
+  $$('#food-chips .chip').forEach(c=>c.onclick=()=>{ formState.foodType=c.dataset.v; renderToggles(); saveDraft(); });
+  [0,1,2].forEach(i=>$('#meal-'+i).onclick=()=>{ formState.meals[i]=!formState.meals[i]; renderToggles(); saveDraft(); });
+  $$('#mood-btns button').forEach(b=>b.onclick=()=>{ formState.mood=(formState.mood===+b.dataset.v?0:+b.dataset.v); renderToggles(); saveDraft(); });
+  $$('#body-btns button').forEach(b=>b.onclick=()=>{ formState.body=(formState.body===+b.dataset.v?0:+b.dataset.v); renderToggles(); saveDraft(); });
+  $('#btn-save').onclick=saveDay;
+  $('#btn-clear-day').onclick=()=>{
+    if(records[currentKey]&&confirm(`确定清空 ${currentKey} 的记录吗？`)){
+      const rid=records[currentKey]._rid;
+      delete records[currentKey];
+      saveRecords(records);
+      deskDropDay(currentKey);
+      clearDraft();
+      if(onlineMode && db && rid){
+        db.deleteRecord({ databaseId:DATABASE_ID, recordId:rid }).catch(function(){});
+      }
+      loadForm(currentKey);
+      renderDateChips();
+      updateTopbar();
+      toast('已清空');
+    }
+  };
+  /* 窗口尺寸变化时重绘趋势图 */
+  let rz=null;
+  window.addEventListener('resize',()=>{
+    clearTimeout(rz);
+    rz=setTimeout(()=>{ if($('#page-trend').classList.contains('active')) renderTrend(); },180);
+  });
+  /* CSV 导入导出按钮 */
+  var csvInput=$('#csv-file');
+  $('#btn-csv-import').onclick=function(){ csvInput.value=''; csvInput.click(); };
+  csvInput.onchange=function(){
+    var f=csvInput.files&&csvInput.files[0];
+    if(f) importCSVFile(f);
+  };
+  $('#btn-csv-export').onclick=exportRecordsCSV;
+  $('#btn-csv-template').onclick=downloadTemplateCSV;
+  updateSyncBadge();
+  deskBootSync();
+  onlineLoaded.then(function(){ switchTab('home'); });
+  if(onlineMode){
+    loadAllOnline();
+    subscribeOnline();
+  } else {
+    switchTab('home');
+  }
+}
+init();
+</script>
+</body>
+</html>
