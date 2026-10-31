@@ -248,6 +248,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
         <button data-page-node-id="lXdZPawacNsTwUTqsuZXbq" class="btn primary big" id="btn-save"><!--pnid:VG8VvWIbMZNXEnIJ9F6BVW-->保存这一天</button>
         <button data-page-node-id="b7gDhP3MwffeXsabm33LJE" class="btn ghost" id="btn-clear-day"><!--pnid:1QxinelHYqFmMUf59NVtIY-->清空这天的记录</button>
       </div>
+      <div class="card" id="day-review" style="display:none"></div>
       <div data-page-node-id="1aHa7KrhDOfS7HgbwEq9a1" class="card">
         <div data-page-node-id="Xot95JYjgzpljvNMgG8uQa" class="card-title"><!--pnid:uQbpv6QmLZRAQ7g6qqCSBs-->🔄 CSV 数据导入 / 导出 <span data-page-node-id="RqMgwvKWpSmPmaJRtZUZxV" class="unit"><!--pnid:aPVXwHjmKhqyd0q1SX9S9D-->一次可导入多天，导入后自动算分</span></div>
         <div data-page-node-id="dQihDJ6hLp2kFWTgTJHHHb" class="hint"><!--pnid:qrtbaFDMmGvuTfA04O5mzc-->表头 14 列（括号里就是单位），列顺序不限、缺列可省：日期(必填，YYYY-MM-DD)、入睡时间 / 起床时间(24 小时制)、睡眠时长(小时)、运动时长(分钟)、饮水量(ml)、早餐 / 午餐 / 晚餐(吃了填「是」，没吃填「否」)、主要食物(食堂 / 外卖 / 自己做 / 快餐 / 均衡)、久坐时长(小时)、精神状态与身体自评(1-5)、备注。三餐三列按「吃了填是、没吃填否」填，三列都填才算完整；如果这天压根没记三餐，三列全留空即可——只有三列全空才会被当作「没记三餐」、不参与评分。</div>
@@ -1027,6 +1028,7 @@ function loadForm(key){
   formState.body=r.bodyScore||0;
   renderToggles();
   clearDirty();
+  renderDayReview();
 }
 function syncMealNotesUI(){
   var ph=['如 包子豆浆','如 食堂两荤一素','如 泡面加蛋'];
@@ -1579,6 +1581,25 @@ function deskBootSync(){
     });
     refreshAll();
   }).catch(function(){ deskBooting=false; setDeskState('⚠️ 文档同步失败'); });
+}
+
+/* 记录页：选中哪天，就显示哪天的评分与建议 */
+function renderDayReview(){
+  var box=document.getElementById('day-review');
+  if(!box) return;
+  var rec=records[currentKey];
+  if(!rec){ box.style.display='none'; box.innerHTML=''; return; }
+  var sc=scoreDay(rec);
+  var color=gradeColor(sc?sc.total:null);
+  var dt=parseDate(currentKey);
+  var tips=dayTip(rec);
+  var isToday=(currentKey===fmtDate(new Date()));
+  box.style.display='';
+  box.innerHTML='<div class="card-title">📋 这天的回顾 <span class="unit">'+
+      (dt.getMonth()+1)+'月'+dt.getDate()+'日 · 周'+'日一二三四五六'[dt.getDay()]+(isToday?'（今天）':'')+
+      '</span></div>'+
+    (sc?'<div class="week-score"><b style="color:'+color+'">'+sc.total+'</b><span class="unit">/ 100</span><em>'+gradeLabel(sc.total)+'</em></div>':'')+
+    '<div class="tips">'+tips.map(function(t){ return '<div class="tip">· '+t+'</div>'; }).join('')+'</div>';
 }
 
 /* ================= 应用框架 ================= */
