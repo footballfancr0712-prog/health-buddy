@@ -21,10 +21,10 @@ if (!gotLock) {
 
   function createWindow() {
     mainWindow = new BrowserWindow({
-      width: 580,
-      height: 920,
-      minWidth: 420,
-      minHeight: 640,
+      width: 1180,
+      height: 860,
+      minWidth: 420,     /* 缩到 900 以下会自动切回手机布局 */
+      minHeight: 560,
       backgroundColor: '#f4f6f5',
       title: '健康 Buddy',
       icon: path.join(__dirname, 'build', 'icon.ico'),
