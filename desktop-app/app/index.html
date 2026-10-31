@@ -203,9 +203,14 @@ input[type=range]{width:100%;accent-color:var(--green)}
           <div data-page-node-id="dpOTAK4kaKsQoWS6eP9n7K" class="field"><label data-page-node-id="mPc5JL4nLHikEXG01U7MV9"><!--pnid:AtSu4vspHDrrzxDdQN2aA9-->今天起床时间</label><input data-page-node-id="T2hapef5w8dZY8jxIfjGo7" id="f-wake" type="time"></div>
         </div>
         <div data-page-node-id="O7bkwY8YDfcqe01sAncrAc" class="field">
-          <label data-page-node-id="sItq2jkwDYWd9LVsmFAMgV"><!--pnid:2RdRGdwjM8N4JmxBBJHfHE-->睡眠时长（小时，含午睡可手动修改）</label>
-          <input data-page-node-id="hbAead6kthsNEhJ9q042SM" id="f-sleep" max="16" min="0" placeholder="填了入睡和起床会自动计算" step="0.5" type="number">
+          <label data-page-node-id="sItq2jkwDYWd9LVsmFAMgV"><!--pnid:2RdRGdwjM8N4JmxBBJHfHE-->夜间睡眠时长（小时，不含午休）</label>
+          <input data-page-node-id="hbAead6kthsNEhJ9q042SM" id="f-sleep" max="16" min="0" placeholder="填了入睡和起床会自动计算" step="0.1" type="number">
           <div data-page-node-id="pRHKeOqipMypz2m11iogal" class="hint" id="f-sleep-auto"></div>
+        </div>
+        <div data-page-node-id="O7bkwY8YDfcqe01sAncrAc" class="field" style="margin-top:12px">
+          <label>午休 <span style="color:#9ca3af;font-weight:400">（有午睡习惯就填，单独算，不并入上面的夜间时长）</span></label>
+          <div class="chips-inline" id="nap-chips"></div>
+          <div class="hint" id="f-nap-hint">20~30 分钟最稳；超过 1 小时容易睡进深睡，醒来发闷，也会推迟当晚入睡</div>
         </div>
       </div>
       <div data-page-node-id="6ZoZB33v7SZBgOC18rMtbx" class="card">
@@ -383,6 +388,7 @@ function rowToRecord(r){
   if(fieldValue(r,'入睡时间')!=null) rec.bedTime=fieldValue(r,'入睡时间');
   if(fieldValue(r,'起床时间')!=null) rec.wakeTime=fieldValue(r,'起床时间');
   if(fieldValue(r,'睡眠时长')!=null) rec.sleepHours=Number(fieldValue(r,'睡眠时长'));
+  if(fieldValue(r,'午休')!=null) rec.napMin=Number(fieldValue(r,'午休'));
   if(fieldValue(r,'运动时长')!=null) rec.exerciseMin=Number(fieldValue(r,'运动时长'));
   if(fieldValue(r,'饮水量')!=null) rec.waterMl=Number(fieldValue(r,'饮水量'));
   var meals=[]; meals.push(!!fieldValue(r,'早餐')); meals.push(!!fieldValue(r,'午餐')); meals.push(!!fieldValue(r,'晚餐'));
@@ -435,6 +441,7 @@ function recToProperties(rec, date, forceMeals){
   if(rec.bedTime!=null) p['入睡时间']={ text: rec.bedTime };
   if(rec.wakeTime!=null) p['起床时间']={ text: rec.wakeTime };
   if(rec.sleepHours!=null) p['睡眠时长']={ number: rec.sleepHours };
+  if(rec.napMin!=null) p['午休']={ number: rec.napMin };
   if(rec.exerciseMin!=null) p['运动时长']={ number: rec.exerciseMin };
   if(rec.waterMl!=null) p['饮水量']={ number: rec.waterMl };
   /* 三餐只有「真的记录过」才写进表：没填过就留空，避免「没记录」被写成「三顿都没吃」而按 0 分算 */
@@ -508,7 +515,7 @@ function reloadAllQuiet(){
     .catch(function(){ setSyncState('offline'); reloadTimer=false; });
 }
 let currentKey = fmtDate(new Date());
-let formState = { meals:[false,false,false], foodType:null, mood:0, body:0, sugar:0, mealsTouched:false };
+let formState = { meals:[false,false,false], foodType:null, mood:0, body:0, sugar:0, mealsTouched:false, nap:0 };
 let formDirty = false;   /* 表单有改动但还没保存 */
 
 /* 统一刷新入口：更新顶栏并重渲染当前激活页（双向同步收到变更时调用） */
@@ -535,12 +542,27 @@ function autoSleepUI(){
   const b=$('#f-bed').value, w=$('#f-wake').value, tip=$('#f-sleep-auto');
   if(b&&w){
     const s=calcSleep(b,w);
-    if(s!=null){ $('#f-sleep').value=s.toFixed(1); tip.textContent=`按入睡/起床自动计算：${s.toFixed(1)} 小时，含午睡可手动修改`; }
+    if(s!=null){ $('#f-sleep').value=s.toFixed(1); tip.textContent=`按入睡/起床自动计算：${s.toFixed(1)} 小时（夜间，不含午休）`; }
     else tip.textContent='入睡和起床时间似乎不太合理，请手动填写时长';
   } else tip.textContent='';
 }
 
 /* ================= 评分引擎（完全基于填写数据） ================= */
+/* 睡眠口径：
+ *   totalSleep   = 夜间 + 午休（页面上展示的「睡了多久」）
+ *   effectiveSleep = 夜间 + 午休×50%，最多折 30 分钟（评分用）
+ * 午睡有恢复价值，但补不回夜间深睡，所以不能等量替换。
+ */
+function totalSleep(rec){
+  if(!rec||rec.sleepHours==null) return null;
+  var n=rec.napMin?rec.napMin/60:0;
+  return Math.round((rec.sleepHours+n)*10)/10;
+}
+function effectiveSleep(rec){
+  if(!rec||rec.sleepHours==null) return null;
+  var nap=rec.napMin?Math.min(rec.napMin,60)/60*0.5:0;
+  return Math.round((rec.sleepHours+nap)*10)/10;
+}
 function scSleep(t){
   if(t==null) return null;
   if(t>=7&&t<=9) return 30;
@@ -575,7 +597,7 @@ function scMood(mood, body){
 function scoreDay(rec){
   if(!rec) return null;
   const parts={
-    sleep:scSleep(rec.sleepHours), exercise:scExercise(rec.exerciseMin),
+    sleep:scSleep(effectiveSleep(rec)), exercise:scExercise(rec.exerciseMin),
     water:scWater(rec.waterMl), meals:scMeals(rec.meals),
     sit:scSit(rec.sitHours), mood:scMood(rec.mood, rec.bodyScore)
   };
@@ -850,10 +872,27 @@ function sleepPhaseAdvice(rec, winRecs){
   return msg;
 }
 
+/* ---------- 午睡：单独说，因为它常常就是晚睡的元凶 ---------- */
+function napAdvice(rec, winRecs){
+  if(!rec||!rec.napMin||rec.napMin<=0) return null;
+  var bed=rec.bedTime?bedToHours(rec.bedTime):null;
+  var lateBed=(bed!=null&&bed>=25);          /* 01:00 之后才睡 */
+  if(rec.napMin>=60){
+    if(lateBed){
+      return '午休 '+rec.napMin+' 分钟，而当晚 '+rec.bedTime+' 才睡——这两件事很可能是同一个原因：白天睡进深睡了，晚上自然不困。先把午睡压到 30 分钟以内试两三天，比硬熬着早睡有效。';
+    }
+    return '午休 '+rec.napMin+' 分钟偏长了：超过 1 小时容易睡进深睡，醒来反而发闷，也会推迟当晚入睡。20~30 分钟提神效果最好，尽量别拖到 15 点以后。';
+  }
+  if(rec.napMin>30){
+    return '午休 '+rec.napMin+' 分钟，已经在临界点了——20~30 分钟既能提神又不影响晚上，再多就可能把入睡时间往后推。';
+  }
+  return null;   /* 15~30 分钟是理想区间，不用提醒 */
+}
+
 /* ---------- 数据合理性：填错的数字会得出错误结论，先拦住 ---------- */
 function dataSanity(rec){
   var out=[];
-  if(rec.sleepHours!=null&&rec.sleepHours>16) out.push('睡眠填了 '+f1(rec.sleepHours)+' 小时，超出正常范围——先核对一下入睡/起床时间，这个数八成不是真实时长。');
+  if(rec.sleepHours!=null&&rec.sleepHours>16) out.push('夜间睡眠填了 '+f1(rec.sleepHours)+' 小时，超出正常范围——先核对一下入睡/起床时间，这个数八成不是真实时长。');
   if(rec.exerciseMin!=null&&rec.exerciseMin>300) out.push('运动填了 '+rec.exerciseMin+' 分钟（超过 5 小时），可能是把步数或「走了多少分钟」填进了运动时长。');
   if(rec.waterMl!=null&&rec.waterMl>6000) out.push('饮水填了 '+rec.waterMl+' ml（超过 6 升），日常范围一般在 1500~3000 ml，确认一下单位。');
   if(rec.sitHours!=null&&rec.sitHours>18) out.push('久坐填了 '+f1(rec.sitHours)+' 小时，接近一整天——可能是把分钟当小时填了。');
@@ -937,7 +976,10 @@ function dayTip(rec){
 
   /* 1) 评分看不见的问题优先：睡得够但睡得太晚 */
   var phase=sleepPhaseAdvice(rec, winRecs);
-  if(phase) t.push(phase);
+  var nap=napAdvice(rec, winRecs);
+  if(nap && phase) t.push(nap);        /* 午睡能解释晚睡，就不再单独讲「生物钟后移」 */
+  else if(phase) t.push(phase);
+  else if(nap) t.push(nap);
 
   /* 2) 只讲丢分最多的那一项，并给剂量；身体不适时跳过运动项（那本来就该少） */
   var named={ sleep:'睡眠', exercise:'运动', water:'饮水', meals:'三餐', sit:'久坐', mood:'状态' };
@@ -1214,9 +1256,11 @@ function dimStats(filled){
 }
 function summaryTexts(filled){
   const n=filled.length, t={};
-  const sl=filled.map(f=>f.rec.sleepHours).filter(v=>v!=null);
-  const aSleep=avg(sl);
-  t.sleep=sl.length?`平均睡眠 ${aSleep.toFixed(1)} 小时${aSleep>=7?'，基本达标':'，还没到 7 小时'}`:'—';
+  const slTotal=filled.map(f=>totalSleep(f.rec)).filter(v=>v!=null);
+  const slNight=filled.map(f=>f.rec.sleepHours).filter(v=>v!=null);
+  const aSleep=avg(slNight);
+  const napDays=filled.filter(f=>f.rec.napMin>0).length;
+  t.sleep=slNight.length?`平均夜间睡眠 ${aSleep.toFixed(1)} 小时${napDays?`（另有 ${napDays} 天午休）`:''}${aSleep>=7?'，基本达标':'，还没到 7 小时'}`:'—';
   const ex=filled.map(f=>f.rec.exerciseMin).filter(v=>v!=null);
   const exd=ex.filter(v=>v>0);
   t.exercise=ex.length?`运动 ${exd.length} 次${exd.length?`，平均每次 ${Math.round(avg(exd))} 分钟`:''}`:'—';
@@ -1402,7 +1446,7 @@ function renderHome(){
     const sc=scoreDay(rec);
     const color=gradeColor(sc?sc.total:null);
     const cells=[
-      ['😴','睡眠', rec.sleepHours!=null?rec.sleepHours+' h':'—'],
+      ['😴','睡眠', rec.sleepHours!=null?(totalSleep(rec).toFixed(1)+' h'):'—'],
       ['🏃','运动', rec.exerciseMin!=null?rec.exerciseMin+' min':'—'],
       ['💧','饮水', rec.waterMl!=null?rec.waterMl+' ml':'—'],
       ['🍚','三餐', rec.meals?`${rec.meals.filter(Boolean).length}/3`:'—'],
@@ -1499,6 +1543,7 @@ function loadForm(key){
   var mnv=r.mealNotes||['','',''];
   ['f-meal-note-0','f-meal-note-1','f-meal-note-2'].forEach(function(id,i){ var el=document.getElementById(id); if(el) el.value=mnv[i]||''; });
   formState.sugar=r.sugarCups||0;
+  formState.nap=r.napMin||0;
   formState.mealsTouched=!!r.meals;
   formState.mood=r.mood||0;
   formState.body=r.bodyScore||0;
@@ -1524,6 +1569,19 @@ function renderToggles(){
   $$('#body-btns button').forEach(b=>b.classList.toggle('on',+b.dataset.v===formState.body));
   $$('#food-chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.v===formState.foodType));
   $$('#sugar-chips .chip').forEach(c=>c.classList.toggle('on',+c.dataset.v===formState.sugar));
+  $$('#nap-chips .chip').forEach(c=>c.classList.toggle('on',+c.dataset.v===formState.nap));
+  var nh=document.getElementById('f-nap-hint');
+  if(nh){
+    var nightV=parseFloat($('#f-sleep').value);
+    if(formState.nap>0&&!isNaN(nightV)){
+      var eff=Math.round((nightV+Math.min(formState.nap,60)/60*0.5)*10)/10;
+      nh.textContent='夜间 '+nightV.toFixed(1)+' h + 午休 '+formState.nap+' 分钟 → 实际计入 '+eff.toFixed(1)+' h（午睡按一半折算，最多折 30 分钟）';
+    }else if(formState.nap>0){
+      nh.textContent='午休 '+formState.nap+' 分钟已记录；填上夜间时长就能算出实际计入多少';
+    }else{
+      nh.textContent='20~30 分钟最稳；超过 1 小时容易睡进深睡，醒来发闷，也会推迟当晚入睡';
+    }
+  }
   syncMealNotesUI();
   const exv=parseFloat($('#f-exercise').value);
   $$('#ex-chips .chip').forEach(c=>c.classList.toggle('on',parseFloat(c.dataset.v)===exv));
@@ -1549,6 +1607,7 @@ function collectForm(){
   });
   if(mn.some(Boolean)) rec.mealNotes=mn;
   if(formState.sugar>0) rec.sugarCups=formState.sugar;
+  if(formState.nap>0) rec.napMin=formState.nap;
   const sit=parseFloat($('#f-sit').value);
   if(!isNaN(sit)) rec.sitHours=sit;
   if(formState.mood) rec.mood=formState.mood;
@@ -1599,7 +1658,7 @@ function validateRecord(rec, dateStr){
       var diff=Math.abs(c-rec.sleepHours);
       if(diff>0.35){
         warns.push({ field:'sleepHours', level:'warn', fix:c.toFixed(1),
-          msg:'按入睡 '+rec.bedTime+'、起床 '+rec.wakeTime+' 算应该是 '+c.toFixed(1)+' 小时，你填的是 '+f1(rec.sleepHours)+' 小时，差 '+Math.round(diff*60)+' 分钟。'+
+          msg:'按入睡 '+rec.bedTime+'、起床 '+rec.wakeTime+' 算，夜间应该是 '+c.toFixed(1)+' 小时，你填的是 '+f1(rec.sleepHours)+' 小时，差 '+Math.round(diff*60)+' 分钟。'+
               (rec.sleepHours<c?'如果你有意扣掉了入睡前的清醒时间，可以忽略。':'') });
       }
     }
@@ -1641,6 +1700,10 @@ function validateRecord(rec, dateStr){
   if(rec.sitHours!=null&&rec.sitHours>RANGES.sitHours.softMax){
     warns.push({ field:'sitHours', level:'warn',
       msg:'久坐 '+f1(rec.sitHours)+' 小时，确认不是把分钟当小时填了。' });
+  }
+  if(rec.napMin!=null&&rec.napMin>180){
+    warns.push({ field:'napMin', level:'warn',
+      msg:'午休填了 '+rec.napMin+' 分钟（超过 3 小时），确认一下是不是把「躺着休息」也算进去了。' });
   }
   if(rec.sugarCups!=null&&rec.sugarCups>RANGES.sugarCups.softMax){
     warns.push({ field:'sugarCups', level:'warn',
@@ -1846,7 +1909,7 @@ function renderReport(){
     </div>`;
     return;
   }
-  const sleeps=filled.map(f=>f.rec.sleepHours).filter(v=>v!=null);
+  const sleeps=filled.map(f=>f.rec.sleepHours).filter(v=>v!=null);   /* 睡眠债只看夜间 */
   const exMins=filled.map(f=>f.rec.exerciseMin).filter(v=>v!=null);
   const exd=exMins.filter(v=>v>0);
   const waters=filled.map(f=>f.rec.waterMl).filter(v=>v!=null);
@@ -1911,7 +1974,7 @@ function renderReport(){
  * 日期,入睡时间,起床时间,睡眠时长,运动时长,饮水量,早餐,午餐,晚餐,主要食物,久坐时长,精神状态,身体自评,备注
  * 也可以直接用 window.healthBuddy.importCSV(csv文本) 编程式导入。
  */
-var CSV_HEADERS = ['日期','入睡时间','起床时间','睡眠时长(小时)','运动时长(分钟)','饮水量(ml)','早餐(吃了填是，没吃填否)','午餐(吃了填是，没吃填否)','晚餐(吃了填是，没吃填否)','早餐吃了什么','午餐吃了什么','晚餐吃了什么','含糖饮料(杯)','主要食物(食堂/外卖/自己做/快餐/均衡)','久坐时长(小时)','精神状态(1-5)','身体自评(1-5)','备注'];
+var CSV_HEADERS = ['日期','入睡时间','起床时间','睡眠时长(小时)','午休(分钟)','运动时长(分钟)','饮水量(ml)','早餐(吃了填是，没吃填否)','午餐(吃了填是，没吃填否)','晚餐(吃了填是，没吃填否)','早餐吃了什么','午餐吃了什么','晚餐吃了什么','含糖饮料(杯)','主要食物(食堂/外卖/自己做/快餐/均衡)','久坐时长(小时)','精神状态(1-5)','身体自评(1-5)','备注'];
 var CSV_ALIAS = {
   '日期':'日期','date':'日期','记录日期':'日期',
   '入睡时间':'入睡时间','入睡':'入睡时间','上床时间':'入睡时间','睡觉时间':'入睡时间',
@@ -1928,7 +1991,8 @@ var CSV_ALIAS = {
   '早餐吃了什么':'早餐吃了什么','早饭吃了':'早餐吃了什么',
   '午餐吃了什么':'午餐吃了什么','午饭吃了':'午餐吃了什么',
   '晚餐吃了什么':'晚餐吃了什么','晚饭吃了':'晚餐吃了什么',
-  '含糖饮料':'含糖饮料','含糖饮料杯':'含糖饮料','饮料':'含糖饮料','奶茶':'含糖饮料'
+  '含糖饮料':'含糖饮料','含糖饮料杯':'含糖饮料','饮料':'含糖饮料','奶茶':'含糖饮料',
+  '午休':'午休','午睡':'午休','午休时长':'午休','nap':'午休'
 };
 function normHead(s){
   /* 先剥掉括号里的单位/说明，再清符号、去尾部单位：睡眠时长(小时) → 睡眠时长 */
@@ -2035,6 +2099,8 @@ function csvRowToRecord(headIdx, row){
   var sh=csvToNum(g('睡眠时长'));
   if(sh==null && bed && wake){ var c=calcSleep(bed,wake); if(c!=null) sh=c; }
   if(sh!=null) rec.sleepHours=Math.round(sh*10)/10;   /* 不截断：超出范围由校验标出来，别偷偷改数 */
+  var napM=csvToNum(g('午休'));
+  if(napM!=null&&napM>0) rec.napMin=Math.round(napM);
   var ex=csvToNum(g('运动时长')); if(ex!=null) rec.exerciseMin=Math.round(ex);
   var wt=csvToNum(g('饮水量')); if(wt!=null) rec.waterMl=Math.max(0,Math.min(5000,Math.round(wt)));
   var b=csvToBool(g('早餐')), l=csvToBool(g('午餐')), din=csvToBool(g('晚餐'));
@@ -2175,7 +2241,7 @@ function exportRecordsCSV(){
     var m=r.meals||null;
     lines.push([
       d, r.bedTime||'', r.wakeTime||'',
-      r.sleepHours!=null?r.sleepHours:'', r.exerciseMin!=null?r.exerciseMin:'', r.waterMl!=null?r.waterMl:'',
+      r.sleepHours!=null?r.sleepHours:'', r.napMin!=null?r.napMin:'', r.exerciseMin!=null?r.exerciseMin:'', r.waterMl!=null?r.waterMl:'',
       m ? (m[0]?'是':'否') : '', m ? (m[1]?'是':'否') : '', m ? (m[2]?'是':'否') : '',
       (r.mealNotes&&r.mealNotes[0])||'', (r.mealNotes&&r.mealNotes[1])||'', (r.mealNotes&&r.mealNotes[2])||'',
       r.sugarCups!=null?r.sugarCups:'',
@@ -2189,8 +2255,8 @@ function exportRecordsCSV(){
 function downloadTemplateCSV(){
   var body=[
     CSV_HEADERS.join(','),
-    '2026-10-31,00:30,07:20,6.8,30,1500,是,是,否,包子豆浆,食堂两荤一素,,1,食堂为主,8,3,3,示例行·可整行删除',
-    '2026-10-30,23:50,07:30,7.6,45,1800,是,是,是,鸡蛋燕麦,外卖盖饭,自己煮面,0,自己做饭,6.5,4,4,'
+    '2026-10-31,00:30,07:20,6.8,30,30,1500,是,是,否,包子豆浆,食堂两荤一素,,1,食堂为主,8,3,3,示例行·可整行删除',
+    '2026-10-30,23:50,07:30,7.6,0,45,1800,是,是,是,鸡蛋燕麦,外卖盖饭,自己煮面,0,自己做饭,6.5,4,4,'
   ].join('\r\n');
   downloadTextCSV('健康Buddy-CSV模板.csv', '\ufeff'+body+'\r\n');
   toast('模板已下载');
@@ -2225,7 +2291,7 @@ function deskCells(dateStr){
   var m=r.meals||null;
   var mn=r.mealNotes||['','',''];
   return [dateStr, r.bedTime||'', r.wakeTime||'',
-    r.sleepHours!=null?r.sleepHours:'', r.exerciseMin!=null?r.exerciseMin:'', r.waterMl!=null?r.waterMl:'',
+    r.sleepHours!=null?r.sleepHours:'', r.napMin!=null?r.napMin:'', r.exerciseMin!=null?r.exerciseMin:'', r.waterMl!=null?r.waterMl:'',
     m?(m[0]?'是':'否'):'', m?(m[1]?'是':'否'):'', m?(m[2]?'是':'否'):'',
     mn[0]||'', mn[1]||'', mn[2]||'', r.sugarCups!=null?r.sugarCups:'',
     r.foodType||'', r.sitHours!=null?r.sitHours:'', r.mood!=null?r.mood:'', r.bodyScore!=null?r.bodyScore:'',
@@ -2335,6 +2401,7 @@ function init(){
   /* 饮食类型 chips */
   $('#food-chips').innerHTML=FOOD_TYPES.map(f=>`<button type="button" class="chip" data-v="${f}">${f}</button>`).join('');
   $('#sugar-chips').innerHTML=[0,1,2,3,4].map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没喝':v+' 杯'}</button>`).join('');
+  $('#nap-chips').innerHTML=[0,15,30,45,60,90].map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没睡':(v<60?v+' 分钟':(v/60)+' 小时')}</button>`).join('');
   /* 事件绑定 */
   $$('.tabbar button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
   $('#f-bed').addEventListener('change',autoSleepUI);
@@ -2342,6 +2409,7 @@ function init(){
   $('#f-water').addEventListener('input',e=>{ $('#f-water-val').textContent=e.target.value+' ml'; });
   ['f-bed','f-wake','f-sleep','f-exercise','f-water','f-sit','f-note','f-meal-note-0','f-meal-note-1','f-meal-note-2'].forEach(function(id){ document.getElementById(id).addEventListener('input',saveDraft); });
   $$('#sugar-chips .chip').forEach(c=>c.onclick=()=>{ formState.sugar=+c.dataset.v; renderToggles(); saveDraft(); });
+  $$('#nap-chips .chip').forEach(c=>c.onclick=()=>{ formState.nap=+c.dataset.v; renderToggles(); saveDraft(); });
   $('#f-exercise').addEventListener('input',renderToggles);
   $$('#ex-chips .chip').forEach(c=>c.onclick=()=>{ $('#f-exercise').value=c.dataset.v; renderToggles(); saveDraft(); });
   $$('#food-chips .chip').forEach(c=>c.onclick=()=>{ formState.foodType=c.dataset.v; renderToggles(); saveDraft(); });
