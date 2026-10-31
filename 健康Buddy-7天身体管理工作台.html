@@ -73,7 +73,13 @@ input[type=range]{width:100%;accent-color:var(--green)}
 .meal-row,.sel-row{display:flex;gap:6px}
 .meal-row button,.sel-row button{flex:1;padding:9px 2px;border:1px solid var(--line);background:#fafafa;border-radius:10px;font-size:14px;cursor:pointer;color:var(--t2);font-family:inherit}
 .sel-row button{font-size:15px}
-.meal-row button.on,.sel-row button.on{border-color:var(--green);background:var(--green-bg);color:var(--green-d);font-weight:700}
+".meal-row button.on,.sel-row button.on{border-color:var(--green);background:var(--green-bg);color:var(--green-d);font-weight:700}
+/* 三餐明细 */
+.meal-detail{margin-top:9px;display:flex;flex-direction:column;gap:6px}
+.md-row{display:flex;align-items:center;gap:8px}
+.md-label{width:56px;flex-shrink:0;font-size:12px;color:var(--t2)}
+.md-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:16px;font-family:inherit;background:#fff;outline:none}
+.md-row input:focus{border-color:var(--green)}
 
 /* 首页 */
 .home-top{display:flex;justify-content:space-between;align-items:center}
@@ -199,10 +205,15 @@ input[type=range]{width:100%;accent-color:var(--green)}
           <div data-page-node-id="PsSq1jB5HM842HYLvSJZFv" class="chips-inline" id="ex-chips"></div>
         </div>
         <div data-page-node-id="Tq3BXT4nezLUKYww5AW7YD" class="field">
-          <label data-page-node-id="wPVOhGfBHeUsNbyNbRSJIF"><!--pnid:2zxr4xvmlooUXKQZVA5dEt-->今天喝了多少水</label>
+          <label data-page-node-id="wPVOhGfBHeUsNbyNbRSJIF"><!--pnid:2zxr4xvmlooUXKQZVA5dEt-->今天喝了多少水 <span style="color:#9ca3af;font-weight:400">（只算白水 / 淡茶，奶茶饮料不算）</span></label>
           <div data-page-node-id="WvNRS5SAjjCQWDhlseL6Vf" class="water-val" id="f-water-val"><!--pnid:kS4c50YR96BoyAReahRi21-->0 ml</div>
           <input data-page-node-id="j4KGo2ecWHG2S490A4fD8j" id="f-water" max="3000" min="0" step="100" type="range" value="0">
           <div data-page-node-id="2byQl4J5OnEvM5ZgCMqFBY" class="hint"><!--pnid:qhih4X1vPHys6YoYoP76FY-->滑动选择，参考目标 1500 ml / 天</div>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>今天喝了含糖饮料吗 <span style="color:#9ca3af;font-weight:400">（奶茶 / 可乐 / 果汁，单独记，不并入上面的水量）</span></label>
+          <div class="chips-inline" id="sugar-chips"></div>
+          <div class="hint">喝水够但奶茶多，是两件事：水照样算分，含糖饮料另做提醒</div>
         </div>
       </div>
       <div data-page-node-id="WgtSZ32IfBaNW1QNRZ2gET" class="card">
@@ -213,6 +224,11 @@ input[type=range]{width:100%;accent-color:var(--green)}
             <button data-page-node-id="fK3MoGYonIk0Z5yiGYbcqv" id="meal-0" type="button"><!--pnid:VJcsFU7P8dFuSWHD93bzhs-->🍳 早餐</button>
             <button data-page-node-id="hPYnPG8X5mXp7xKphs0tKh" id="meal-1" type="button"><!--pnid:EvUaBVLHV8hM2J2WsYAf1x-->🍚 午餐</button>
             <button data-page-node-id="s0tQfRTyY733dSnHNVoi5P" id="meal-2" type="button"><!--pnid:O0SOHZgrnUqOnwY6FVPZIj-->🍜 晚餐</button>
+          </div>
+          <div class="meal-detail">
+            <div class="md-row"><span class="md-label">早饭吃了</span><input id="f-meal-note-0" maxlength="20" placeholder="可选，如 包子豆浆" type="text"></div>
+            <div class="md-row"><span class="md-label">午饭吃了</span><input id="f-meal-note-1" maxlength="20" placeholder="可选，如 食堂两荤一素" type="text"></div>
+            <div class="md-row"><span class="md-label">晚饭吃了</span><input id="f-meal-note-2" maxlength="20" placeholder="可选，如 泡面加蛋" type="text"></div>
           </div>
         </div>
         <div data-page-node-id="jArdyNrcSmthBqQlrEtZef" class="field">
@@ -347,6 +363,9 @@ function rowToRecord(r){
   var meals=[]; meals.push(!!fieldValue(r,'早餐')); meals.push(!!fieldValue(r,'午餐')); meals.push(!!fieldValue(r,'晚餐'));
   if(meals.some(Boolean)) rec.meals=meals;
   if(fieldValue(r,'主要食物')!=null) rec.foodType=fieldValue(r,'主要食物');
+  var mnc=[fieldValue(r,'早餐吃了什么'),fieldValue(r,'午餐吃了什么'),fieldValue(r,'晚餐吃了什么')];
+  if(mnc.some(function(v){ return v!=null && v!==''; })) rec.mealNotes=mnc.map(function(v){ return v==null?'':String(v); });
+  if(fieldValue(r,'含糖饮料')!=null) rec.sugarCups=Number(fieldValue(r,'含糖饮料'));
   if(fieldValue(r,'久坐时长')!=null) rec.sitHours=Number(fieldValue(r,'久坐时长'));
   if(fieldValue(r,'精神状态')!=null) rec.mood=Number(fieldValue(r,'精神状态'));
   if(fieldValue(r,'身体自评')!=null) rec.bodyScore=Number(fieldValue(r,'身体自评'));
@@ -398,6 +417,12 @@ function recToProperties(rec, date, forceMeals){
     var meals=rec.meals||[false,false,false];
     p['早餐']={ checkbox: !!meals[0] }; p['午餐']={ checkbox: !!meals[1] }; p['晚餐']={ checkbox: !!meals[2] };
   }
+  if(rec.mealNotes){
+    if(rec.mealNotes[0]) p['早餐吃了什么']={ text: rec.mealNotes[0] };
+    if(rec.mealNotes[1]) p['午餐吃了什么']={ text: rec.mealNotes[1] };
+    if(rec.mealNotes[2]) p['晚餐吃了什么']={ text: rec.mealNotes[2] };
+  }
+  if(rec.sugarCups!=null) p['含糖饮料']={ number: rec.sugarCups };
   if(rec.foodType!=null) p['主要食物']={ select: rec.foodType };
   if(rec.sitHours!=null) p['久坐时长']={ number: rec.sitHours };
   if(rec.mood!=null) p['精神状态']={ number: rec.mood };
@@ -458,7 +483,7 @@ function reloadAllQuiet(){
     .catch(function(){ setSyncState('offline'); reloadTimer=false; });
 }
 let currentKey = fmtDate(new Date());
-let formState = { meals:[false,false,false], foodType:null, mood:0, body:0 };
+let formState = { meals:[false,false,false], foodType:null, mood:0, body:0, sugar:0 };
 let formDirty = false;   /* 表单有改动但还没保存 */
 
 /* 统一刷新入口：更新顶栏并重渲染当前激活页（双向同步收到变更时调用） */
@@ -632,6 +657,7 @@ function dayTip(rec){
   if(rec.exerciseMin!=null&&rec.exerciseMin===0) t.push('今天还没动起来，睡前十分钟拉伸也算数');
   if(rec.waterMl!=null&&rec.waterMl<1000) t.push('今天喝水偏少，睡前再补一小杯');
   if(rec.meals&&!rec.meals[0]) t.push('今天跳过了早餐，明早可以准备点简单的');
+  if(rec.sugarCups!=null&&rec.sugarCups>=2) t.push('今天喝了 '+rec.sugarCups+' 杯含糖饮料，明天试着换成无糖茶或气泡水，先把杯数减半');
   noteTips(rec.note, 1).forEach(function(x){ t.push(x); });
   if(!t.length) t.push('今天各项都比较稳，继续保持');
   return t;
@@ -955,6 +981,9 @@ function loadForm(key){
   $('#f-note').value=r.note||'';
   formState.meals=r.meals?[...r.meals]:[false,false,false];
   formState.foodType=r.foodType||null;
+  var mnv=r.mealNotes||['','',''];
+  ['f-meal-note-0','f-meal-note-1','f-meal-note-2'].forEach(function(id,i){ var el=document.getElementById(id); if(el) el.value=mnv[i]||''; });
+  formState.sugar=r.sugarCups||0;
   formState.mood=r.mood||0;
   formState.body=r.bodyScore||0;
   renderToggles();
@@ -965,6 +994,7 @@ function renderToggles(){
   $$('#mood-btns button').forEach(b=>b.classList.toggle('on',+b.dataset.v===formState.mood));
   $$('#body-btns button').forEach(b=>b.classList.toggle('on',+b.dataset.v===formState.body));
   $$('#food-chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.v===formState.foodType));
+  $$('#sugar-chips .chip').forEach(c=>c.classList.toggle('on',+c.dataset.v===formState.sugar));
   const exv=parseFloat($('#f-exercise').value);
   $$('#ex-chips .chip').forEach(c=>c.classList.toggle('on',parseFloat(c.dataset.v)===exv));
 }
@@ -982,6 +1012,9 @@ function collectForm(){
   if(wv>0) rec.waterMl=wv;
   if(formState.meals.some(Boolean)) rec.meals=[...formState.meals];
   if(formState.foodType) rec.foodType=formState.foodType;
+  var mn=['f-meal-note-0','f-meal-note-1','f-meal-note-2'].map(function(id){ var el=document.getElementById(id); return el?el.value.trim():''; });
+  if(mn.some(Boolean)) rec.mealNotes=mn;
+  if(formState.sugar>0) rec.sugarCups=formState.sugar;
   const sit=parseFloat($('#f-sit').value);
   if(!isNaN(sit)) rec.sitHours=Math.max(0,Math.min(18,sit));
   if(formState.mood) rec.mood=formState.mood;
@@ -1139,7 +1172,7 @@ function renderReport(){
  * 日期,入睡时间,起床时间,睡眠时长,运动时长,饮水量,早餐,午餐,晚餐,主要食物,久坐时长,精神状态,身体自评,备注
  * 也可以直接用 window.healthBuddy.importCSV(csv文本) 编程式导入。
  */
-var CSV_HEADERS = ['日期','入睡时间','起床时间','睡眠时长(小时)','运动时长(分钟)','饮水量(ml)','早餐(吃了填是，没吃填否)','午餐(吃了填是，没吃填否)','晚餐(吃了填是，没吃填否)','主要食物(食堂/外卖/自己做/快餐/均衡)','久坐时长(小时)','精神状态(1-5)','身体自评(1-5)','备注'];
+var CSV_HEADERS = ['日期','入睡时间','起床时间','睡眠时长(小时)','运动时长(分钟)','饮水量(ml)','早餐(吃了填是，没吃填否)','午餐(吃了填是，没吃填否)','晚餐(吃了填是，没吃填否)','早餐吃了什么','午餐吃了什么','晚餐吃了什么','含糖饮料(杯)','主要食物(食堂/外卖/自己做/快餐/均衡)','久坐时长(小时)','精神状态(1-5)','身体自评(1-5)','备注'];
 var CSV_ALIAS = {
   '日期':'日期','date':'日期','记录日期':'日期',
   '入睡时间':'入睡时间','入睡':'入睡时间','上床时间':'入睡时间','睡觉时间':'入睡时间',
@@ -1152,7 +1185,11 @@ var CSV_ALIAS = {
   '久坐时长':'久坐时长','久坐':'久坐时长','久坐小时':'久坐时长',
   '精神状态':'精神状态','精神':'精神状态','心情':'精神状态',
   '身体自评':'身体自评','身体':'身体自评','身体评分':'身体自评',
-  '备注':'备注','note':'备注'
+  '备注':'备注','note':'备注',
+  '早餐吃了什么':'早餐吃了什么','早饭吃了':'早餐吃了什么',
+  '午餐吃了什么':'午餐吃了什么','午饭吃了':'午餐吃了什么',
+  '晚餐吃了什么':'晚餐吃了什么','晚饭吃了':'晚餐吃了什么',
+  '含糖饮料':'含糖饮料','含糖饮料杯':'含糖饮料','饮料':'含糖饮料','奶茶':'含糖饮料'
 };
 function normHead(s){
   /* 先剥掉括号里的单位/说明，再清符号、去尾部单位：睡眠时长(小时) → 睡眠时长 */
@@ -1265,6 +1302,10 @@ function csvRowToRecord(headIdx, row){
   /* 至少有一顿「吃了」才算记了三餐；三列都是否/空值时视为这天没记三餐，不写成 0/3 */
   /* 三列全空=这天没记三餐；只要有一列填了是/否，就按是/否记录，空着的那顿按没吃算 */
   if(b!=null||l!=null||din!=null) rec.meals=[!!b,!!l,!!din];
+  var mn=[g('早餐吃了什么')||'', g('午餐吃了什么')||'', g('晚餐吃了什么')||''].map(function(x){ return String(x).slice(0,20); });
+  if(mn.some(Boolean)) rec.mealNotes=mn;
+  var sug=csvToNum(g('含糖饮料'));
+  if(sug!=null) rec.sugarCups=Math.max(0,Math.min(9,Math.round(sug)));
   var food=csvFood(g('主要食物')); if(food) rec.foodType=food;
   var sit=csvToNum(g('久坐时长')); if(sit!=null) rec.sitHours=Math.max(0,Math.min(24,sit));
   var mood=csvToNum(g('精神状态')); if(mood!=null) rec.mood=Math.min(5,Math.max(1,Math.round(mood)));
@@ -1386,6 +1427,8 @@ function exportRecordsCSV(){
       d, r.bedTime||'', r.wakeTime||'',
       r.sleepHours!=null?r.sleepHours:'', r.exerciseMin!=null?r.exerciseMin:'', r.waterMl!=null?r.waterMl:'',
       m ? (m[0]?'是':'否') : '', m ? (m[1]?'是':'否') : '', m ? (m[2]?'是':'否') : '',
+      (r.mealNotes&&r.mealNotes[0])||'', (r.mealNotes&&r.mealNotes[1])||'', (r.mealNotes&&r.mealNotes[2])||'',
+      r.sugarCups!=null?r.sugarCups:'',
       r.foodType||'', r.sitHours!=null?r.sitHours:'', r.mood!=null?r.mood:'', r.bodyScore!=null?r.bodyScore:'',
       r.note||''
     ].map(csvCell).join(','));
@@ -1396,8 +1439,8 @@ function exportRecordsCSV(){
 function downloadTemplateCSV(){
   var body=[
     CSV_HEADERS.join(','),
-    '2026-10-20,00:30,07:20,6.8,30,1500,TRUE,TRUE,TRUE,食堂为主,8,3,3,示例行·可整行删除',
-    '2026-10-21,23:50,07:30,7.6,45,1800,TRUE,TRUE,FALSE,自己做饭,6.5,4,4,'
+    '2026-10-31,00:30,07:20,6.8,30,1500,是,是,否,包子豆浆,食堂两荤一素,,1,食堂为主,8,3,3,示例行·可整行删除',
+    '2026-10-30,23:50,07:30,7.6,45,1800,是,是,是,鸡蛋燕麦,外卖盖饭,自己煮面,0,自己做饭,6.5,4,4,'
   ].join('\r\n');
   downloadTextCSV('健康Buddy-CSV模板.csv', '\ufeff'+body+'\r\n');
   toast('模板已下载');
@@ -1430,9 +1473,11 @@ var deskBooting=false;
 function deskCells(dateStr){
   var r=records[dateStr]||{};
   var m=r.meals||null;
+  var mn=r.mealNotes||['','',''];
   return [dateStr, r.bedTime||'', r.wakeTime||'',
     r.sleepHours!=null?r.sleepHours:'', r.exerciseMin!=null?r.exerciseMin:'', r.waterMl!=null?r.waterMl:'',
     m?(m[0]?'是':'否'):'', m?(m[1]?'是':'否'):'', m?(m[2]?'是':'否'):'',
+    mn[0]||'', mn[1]||'', mn[2]||'', r.sugarCups!=null?r.sugarCups:'',
     r.foodType||'', r.sitHours!=null?r.sitHours:'', r.mood!=null?r.mood:'', r.bodyScore!=null?r.bodyScore:'',
     r.note||''];
 }
@@ -1520,12 +1565,14 @@ function init(){
   $('#ex-chips').innerHTML=EX_CHIPS.map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没运动':v+' min'}</button>`).join('');
   /* 饮食类型 chips */
   $('#food-chips').innerHTML=FOOD_TYPES.map(f=>`<button type="button" class="chip" data-v="${f}">${f}</button>`).join('');
+  $('#sugar-chips').innerHTML=[0,1,2,3,4].map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没喝':v+' 杯'}</button>`).join('');
   /* 事件绑定 */
   $$('.tabbar button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
   $('#f-bed').addEventListener('change',autoSleepUI);
   $('#f-wake').addEventListener('change',autoSleepUI);
   $('#f-water').addEventListener('input',e=>{ $('#f-water-val').textContent=e.target.value+' ml'; });
-  ['f-bed','f-wake','f-sleep','f-exercise','f-water','f-sit','f-note'].forEach(function(id){ document.getElementById(id).addEventListener('input',saveDraft); });
+  ['f-bed','f-wake','f-sleep','f-exercise','f-water','f-sit','f-note','f-meal-note-0','f-meal-note-1','f-meal-note-2'].forEach(function(id){ document.getElementById(id).addEventListener('input',saveDraft); });
+  $$('#sugar-chips .chip').forEach(c=>c.onclick=()=>{ formState.sugar=+c.dataset.v; renderToggles(); saveDraft(); });
   $('#f-exercise').addEventListener('input',renderToggles);
   $$('#ex-chips .chip').forEach(c=>c.onclick=()=>{ $('#f-exercise').value=c.dataset.v; renderToggles(); saveDraft(); });
   $$('#food-chips .chip').forEach(c=>c.onclick=()=>{ formState.foodType=c.dataset.v; renderToggles(); saveDraft(); });
