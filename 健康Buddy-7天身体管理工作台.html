@@ -77,9 +77,10 @@ input[type=range]{width:100%;accent-color:var(--green)}
 /* 三餐明细 */
 .meal-detail{margin-top:9px;display:flex;flex-direction:column;gap:6px}
 .md-row{display:flex;align-items:center;gap:8px}
-.md-label{width:56px;flex-shrink:0;font-size:12px;color:var(--t2)}
+.md-label{width:70px;flex-shrink:0;font-size:12px;color:var(--t2)}
 .md-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:16px;font-family:inherit;background:#fff;outline:none}
 .md-row input:focus{border-color:var(--green)}
+.md-row input:disabled{background:#f6f7f6;color:#9ca3af;border-style:dashed}
 
 /* 首页 */
 .home-top{display:flex;justify-content:space-between;align-items:center}
@@ -226,9 +227,9 @@ input[type=range]{width:100%;accent-color:var(--green)}
             <button data-page-node-id="s0tQfRTyY733dSnHNVoi5P" id="meal-2" type="button"><!--pnid:O0SOHZgrnUqOnwY6FVPZIj-->🍜 晚餐</button>
           </div>
           <div class="meal-detail">
-            <div class="md-row"><span class="md-label">早饭吃了</span><input id="f-meal-note-0" maxlength="20" placeholder="可选，如 包子豆浆" type="text"></div>
-            <div class="md-row"><span class="md-label">午饭吃了</span><input id="f-meal-note-1" maxlength="20" placeholder="可选，如 食堂两荤一素" type="text"></div>
-            <div class="md-row"><span class="md-label">晚饭吃了</span><input id="f-meal-note-2" maxlength="20" placeholder="可选，如 泡面加蛋" type="text"></div>
+            <div class="md-row"><span class="md-label">早饭吃了什么</span><input id="f-meal-note-0" maxlength="20" placeholder="可选，如 包子豆浆" type="text"></div>
+            <div class="md-row"><span class="md-label">午饭吃了什么</span><input id="f-meal-note-1" maxlength="20" placeholder="可选，如 食堂两荤一素" type="text"></div>
+            <div class="md-row"><span class="md-label">晚饭吃了什么</span><input id="f-meal-note-2" maxlength="20" placeholder="可选，如 泡面加蛋" type="text"></div>
           </div>
         </div>
         <div data-page-node-id="jArdyNrcSmthBqQlrEtZef" class="field">
@@ -483,7 +484,7 @@ function reloadAllQuiet(){
     .catch(function(){ setSyncState('offline'); reloadTimer=false; });
 }
 let currentKey = fmtDate(new Date());
-let formState = { meals:[false,false,false], foodType:null, mood:0, body:0, sugar:0 };
+let formState = { meals:[false,false,false], foodType:null, mood:0, body:0, sugar:0, mealsTouched:false };
 let formDirty = false;   /* 表单有改动但还没保存 */
 
 /* 统一刷新入口：更新顶栏并重渲染当前激活页（双向同步收到变更时调用） */
@@ -984,10 +985,22 @@ function loadForm(key){
   var mnv=r.mealNotes||['','',''];
   ['f-meal-note-0','f-meal-note-1','f-meal-note-2'].forEach(function(id,i){ var el=document.getElementById(id); if(el) el.value=mnv[i]||''; });
   formState.sugar=r.sugarCups||0;
+  formState.mealsTouched=!!r.meals;
   formState.mood=r.mood||0;
   formState.body=r.bodyScore||0;
   renderToggles();
   clearDirty();
+}
+function syncMealNotesUI(){
+  var ph=['如 包子豆浆','如 食堂两荤一素','如 泡面加蛋'];
+  [0,1,2].forEach(function(i){
+    var el=document.getElementById('f-meal-note-'+i);
+    if(!el) return;
+    var ate=!!formState.meals[i];
+    var touched=formState.mealsTouched;
+    el.disabled=!ate;
+    el.placeholder = ate ? ph[i] : (touched ? '这顿没吃，不用填' : '先点上面：这顿吃了吗');
+  });
 }
 function renderToggles(){
   [0,1,2].forEach(i=>$('#meal-'+i).classList.toggle('on',!!formState.meals[i]));
@@ -995,6 +1008,7 @@ function renderToggles(){
   $$('#body-btns button').forEach(b=>b.classList.toggle('on',+b.dataset.v===formState.body));
   $$('#food-chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.v===formState.foodType));
   $$('#sugar-chips .chip').forEach(c=>c.classList.toggle('on',+c.dataset.v===formState.sugar));
+  syncMealNotesUI();
   const exv=parseFloat($('#f-exercise').value);
   $$('#ex-chips .chip').forEach(c=>c.classList.toggle('on',parseFloat(c.dataset.v)===exv));
 }
@@ -1012,7 +1026,11 @@ function collectForm(){
   if(wv>0) rec.waterMl=wv;
   if(formState.meals.some(Boolean)) rec.meals=[...formState.meals];
   if(formState.foodType) rec.foodType=formState.foodType;
-  var mn=['f-meal-note-0','f-meal-note-1','f-meal-note-2'].map(function(id){ var el=document.getElementById(id); return el?el.value.trim():''; });
+  var mn=['f-meal-note-0','f-meal-note-1','f-meal-note-2'].map(function(id,i){
+    var el=document.getElementById(id);
+    if(!el||!formState.meals[i]) return '';   /* 没吃的那顿不记吃了什么 */
+    return el.value.trim();
+  });
   if(mn.some(Boolean)) rec.mealNotes=mn;
   if(formState.sugar>0) rec.sugarCups=formState.sugar;
   const sit=parseFloat($('#f-sit').value);
@@ -1576,7 +1594,15 @@ function init(){
   $('#f-exercise').addEventListener('input',renderToggles);
   $$('#ex-chips .chip').forEach(c=>c.onclick=()=>{ $('#f-exercise').value=c.dataset.v; renderToggles(); saveDraft(); });
   $$('#food-chips .chip').forEach(c=>c.onclick=()=>{ formState.foodType=c.dataset.v; renderToggles(); saveDraft(); });
-  [0,1,2].forEach(i=>$('#meal-'+i).onclick=()=>{ formState.meals[i]=!formState.meals[i]; renderToggles(); saveDraft(); });
+  [0,1,2].forEach(i=>$('#meal-'+i).onclick=()=>{
+    formState.meals[i]=!formState.meals[i];
+    formState.mealsTouched=true;
+    if(!formState.meals[i]){
+      var el=document.getElementById('f-meal-note-'+i);
+      if(el) el.value='';
+    }
+    renderToggles(); saveDraft();
+  });
   $$('#mood-btns button').forEach(b=>b.onclick=()=>{ formState.mood=(formState.mood===+b.dataset.v?0:+b.dataset.v); renderToggles(); saveDraft(); });
   $$('#body-btns button').forEach(b=>b.onclick=()=>{ formState.body=(formState.body===+b.dataset.v?0:+b.dataset.v); renderToggles(); saveDraft(); });
   $('#btn-save').onclick=saveDay;
