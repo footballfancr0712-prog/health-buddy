@@ -651,6 +651,32 @@ function noteBlockHTML(winRecs){
     '<div class="hint" style="margin-top:8px">这几条只针对作息、运动、饮食等生活习惯；身体不适请以医生意见为准，本页不做任何诊断。</div>'+
   '</div>';
 }
+/* 含糖饮料：结合备注里写的「为什么喝」，给对应的建议，而不是一律「换成无糖」 */
+var SUGAR_REASONS=[
+  { re:/困|提神|犯困|熬夜|加班|没睡好|好累|太累/, label:'提神',
+    tip:'靠它提神是最快的，但会把问题推到明天——今晚更难睡。真困先补一杯水、站起来走两分钟，咖啡因尽量放在下午两点前。' },
+  { re:/聚餐|同事|朋友|请客|聚会|饭局|应酬|别人买|送的/, label:'社交场合',
+    tip:'社交场合很难推，不用硬拒：把甜度降一档（少糖或无糖），或者一杯喝一半，比一次戒断更容易坚持。' },
+  { re:/嘴馋|馋|想吃甜|心情|压力|烦|emo|难过|焦虑|委屈/, label:'情绪或嘴馋',
+    tip:'想喝甜的，多半是能量或情绪需要补给。先吃点带蛋白质的（鸡蛋、酸奶、坚果），那股冲动通常 20 分钟内会退。' },
+  { re:/渴|解渴|热|出汗|口干|太干/, label:'解渴',
+    tip:'口渴时先喝一杯白水——多数「想喝饮料」其实是缺水。想要味道就换气泡水加片柠檬。' },
+  { re:/运动|健身|跑步|打球|锻炼|练完/, label:'运动后',
+    tip:'运动后补糖有道理，但一杯奶茶的糖通常超过刚才的消耗，优先水加一份蛋白质。' },
+  { re:/习惯|每天|固定|离不开|下午茶|老规矩/, label:'习惯',
+    tip:'习惯性的那杯最难改，别一次戒断：先换小杯，或把固定那杯改成无糖，两周后再减次数。' }
+];
+function sugarAdvice(rec){
+  var cups=rec.sugarCups;
+  if(cups==null||cups<=0) return null;
+  var note=String(rec.note||'');
+  var head=cups+' 杯含糖饮料';
+  for(var i=0;i<SUGAR_REASONS.length;i++){
+    if(SUGAR_REASONS[i].re.test(note)) return head+'（'+SUGAR_REASONS[i].label+'）——'+SUGAR_REASONS[i].tip;
+  }
+  if(rec.waterMl!=null&&rec.waterMl<1000) return head+'，白水却只有 '+rec.waterMl+' ml——先把总量换过来，饮料换成水，一周就能看出差别。';
+  return head+'——明天换成无糖茶或气泡水，先把杯数减半。';
+}
 function dayTip(rec){
   const t=[];
   if(rec.sleepHours!=null&&rec.sleepHours<6) t.push('昨晚睡得有点少，今天可以早点收尾，把觉补回来');
@@ -658,8 +684,15 @@ function dayTip(rec){
   if(rec.exerciseMin!=null&&rec.exerciseMin===0) t.push('今天还没动起来，睡前十分钟拉伸也算数');
   if(rec.waterMl!=null&&rec.waterMl<1000) t.push('今天喝水偏少，睡前再补一小杯');
   if(rec.meals&&!rec.meals[0]) t.push('今天跳过了早餐，明早可以准备点简单的');
-  if(rec.sugarCups!=null&&rec.sugarCups>=2) t.push('今天喝了 '+rec.sugarCups+' 杯含糖饮料，明天试着换成无糖茶或气泡水，先把杯数减半');
-  noteTips(rec.note, 1).forEach(function(x){ t.push(x); });
+  var sugAdv=sugarAdvice(rec);
+  if(sugAdv){
+    t.push(sugAdv);
+    /* 含糖这条已经把吃喝/情绪说到了，这里只补身体类的提醒，避免同类重复 */
+    noteTagsOf(rec.note).filter(function(r){ return ['sick','recover','period'].indexOf(r.key)>=0; })
+      .slice(0,1).forEach(function(r){ t.push(r.icon+' '+r.tip); });
+  } else {
+    noteTips(rec.note, 1).forEach(function(x){ t.push(x); });
+  }
   if(!t.length) t.push('今天各项都比较稳，继续保持');
   return t;
 }
@@ -696,6 +729,10 @@ function generateTips(winRecs){
   if(n>=4&&hasMeals>=3&&regularDays<hasMeals/2) tips.push({type:'diet', text:`三餐规律的日子只有 ${regularDays}/${hasMeals} 天，尽量让吃饭时间稳定下来，饿过头反而容易暴饮暴食。`});
   const takeout=filled.filter(d=>d.rec.foodType==='外卖为主'||d.rec.foodType==='快餐居多').length;
   if(n>=4&&takeout>=Math.ceil(n/2)) tips.push({type:'diet', text:`最近外卖/快餐吃得比较多（${takeout}/${n} 天），条件允许的话可以多去几次食堂，或者周末自己做一顿。`});
+  /* 含糖饮料 */
+  const sugarDays=filled.map(d=>d.rec.sugarCups).filter(v=>v!=null&&v>0);
+  const sugarTotal=sugarDays.reduce((a,b)=>a+b,0);
+  if(sugarTotal>=3) tips.push({type:'diet', text:`这周含糖饮料一共 ${sugarTotal} 杯（${sugarDays.length} 天），不用戒，挑「最想喝的那一两次」留着，其余换成无糖就够。`});
   /* 久坐 */
   const sits=filled.map(d=>d.rec.sitHours).filter(v=>v!=null);
   const aSit=avg(sits);
