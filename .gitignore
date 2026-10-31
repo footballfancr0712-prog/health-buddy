@@ -12,3 +12,7 @@ dist-mac/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 我的个人记录不进版本管理（只跟踪软件本身）
+健康Buddy-我的记录.csv
+健康Buddy-CSV数据模板(原始备份).csv
