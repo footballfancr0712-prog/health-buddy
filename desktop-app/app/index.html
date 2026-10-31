@@ -576,170 +576,606 @@ function todayVerdict(sc){
   return '需要调整';
 }
 
-/* ================= 建议引擎（规则驱动，不做诊断） ================= */
-/* ================= 备注关键词分析 =================
- * 备注是自由文本（最多 40 字），这里按关键词归类，给出对应的生活作息建议。
- * 只做习惯层面的提醒，不涉及诊断或用药建议；身体不适以医生意见为准。
+/* ================= 分析引擎：证据 → 归因 → 处方 =================
+ * 和「关键词 → 套话」的区别：
+ * 1) 备注里的说法必须和当天数据交叉验证，对不上就明说对不上，不硬套建议
+ * 2) 结论按「丢了多少分」排序，只说最值得改的一两项，不罗列
+ * 3) 处方给剂量（提前几分钟、还差多少 ml、缺哪一顿），不给「多喝水」这种话
+ * 4) 只谈作息/运动/饮食等自己能调整的事，不做任何诊断
  */
-var NOTE_RULES=[
-  { key:'recover', icon:'🌤️', label:'身体在恢复', pri:1,
-    re:/痊愈|好转|好多了|恢复了|退烧了|已退烧|快好|低烧刚好|刚好转/,
-    tip:'备注提到在恢复中：运动量先按平时一半来，别急着补练，睡眠优先，一周内不要连着两天高强度。' },
-  { key:'sick', icon:'🤒', label:'身体不适 / 在服药', pri:2,
+function f1(v){ return (v==null)?'—':(Math.round(v*10)/10).toFixed(1); }
+function hhmm(v){ var t=Math.round(v*60); return String(Math.floor(t/60)%24).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); }
+function prevDateStr(d){ var x=parseDate(d); x.setDate(x.getDate()-1); return fmtDate(x); }
+
+/* ---------- 备注事实库：每条都尽量能被当天数据校验 ----------
+ * check(rec, prevRec) 返回：true 数据印证 / false 数据不支持 / null 无法判断（没填）
+ */
+var NOTE_FACTS=[
+  { id:'sleep_debt', cat:'sleep', rx:'sleep', label:'熬夜 / 睡太少',
+    re:/熬夜|睡得少|只睡|睡不够|睡眠不足|通宵|才睡|两点睡|三点睡|一点睡/,
+    check:function(r){ return r.sleepHours==null?null:(r.sleepHours<6.5); },
+    yes:function(r){ return '备注写熬夜，数据也对得上：只睡了 '+f1(r.sleepHours)+' h，离 7 h 差 '+f1(7-r.sleepHours)+' h。这种困是睡眠债，咖啡只能压住体感，压不住账。'; },
+    no:function(r){ return '备注写熬夜，但记录是 '+f1(r.sleepHours)+' h，够 7 h 标准——可能白天补了觉，或者「入睡时间」填的是放下手机的时间，值得核对一下。'; } },
+
+  { id:'insomnia', cat:'sleep', rx:'sleep', label:'入睡困难 / 早醒',
+    re:/失眠|睡不着|入睡难|翻来覆去|躺了很久|易醒|早醒|睡了又醒|醒了好几次/,
+    check:function(r){ if(!r.bedTime||r.sleepHours==null) return null; return (bedToHours(r.bedTime)<24.75); },
+    yes:function(r){ return '上床时间 '+r.bedTime+' 其实不算晚，但只睡了 '+f1(r.sleepHours)+' h——问题不在「睡得太晚」，在躺下之后，先别急着把上床时间往前挪。'; },
+    no:function(r){ return '上床时间 '+r.bedTime+' 已经偏晚，先把入睡时间往前提半小时，比躺着硬睡更有效。'; },
+    na:function(){ return '想知道失眠是不是真的影响了睡眠，把「入睡时间」和「睡眠时长」填上就能判断。'; } },
+
+  { id:'fatigue', cat:'mood', rx:'sleep', label:'累 / 犯困 / 没精神',
+    re:/累|疲惫|乏|没精神|困|睡不醒|没劲|提不起劲/,
+    check:function(r){
+      if(r.sleepHours==null&&r.sitHours==null) return null;
+      if(r.sleepHours!=null&&r.sleepHours<6.5) return true;      /* 睡眠债能解释 */
+      if(r.sitHours!=null&&r.sitHours>=8) return 'sit';          /* 久坐能解释 */
+      if(r.sleepHours==null||r.sitHours==null) return null;      /* 缺一项，判不准 */
+      return false;                                              /* 两项都正常，累另有原因 */
+    },
+    yes:function(r){
+      if(r.sleepHours!=null&&r.sleepHours<6.5)
+        return '备注说累，数据指向同一个地方：睡眠只有 '+f1(r.sleepHours)+' h。先补觉，别急着找别的原因。';
+      return '备注说累，但睡眠有 '+f1(r.sleepHours)+' h，反而是久坐 '+f1(r.sitHours)+' h——这次的累更像「坐太久」而不是「睡不够」，每坐 1 小时起身 2 分钟比早睡更管用。';
+    },
+    no:function(r){ return '备注说累，而你睡了 '+f1(r.sleepHours)+' h，久坐 '+f1(r.sitHours)+' h 也正常——睡眠和久坐都不是主因，可以从饮水、三餐和情绪上找。'; },
+    na:function(){ return '备注说累，但睡眠和久坐没填，判断不了是睡不够还是坐太久——补上这两项就能定位。'; } },
+
+  { id:'caffeine', cat:'diet', rx:'sleep', label:'咖啡 / 奶茶 / 浓茶',
+    re:/咖啡|奶茶|浓茶|能量饮料|美式|拿铁|红牛/,
+    check:function(r,prev){
+      if(!prev||!r.bedTime||!prev.bedTime) return null;
+      return (bedToHours(r.bedTime)-bedToHours(prev.bedTime))>0.5;   /* 比前一天晚睡半小时以上 */
+    },
+    yes:function(r,prev){ return '这天入睡 '+r.bedTime+'，前一天是 '+prev.bedTime+'，往后推了 '+f1(bedToHours(r.bedTime)-bedToHours(prev.bedTime))+' h——和你喝的那杯时间上对得上。'; },
+    no:function(r,prev){ return '这天入睡 '+r.bedTime+'，前一天 '+prev.bedTime+'，没有往后推——这杯暂时没影响入睡，但别在下午之后喝。'; },
+    na:function(){ return '想确认这杯有没有影响睡眠，把「入睡时间」连续填几天就能对比出来。'; } },
+
+  { id:'alcohol', cat:'diet', rx:'sleep', label:'喝酒',
+    re:/喝酒|喝了酒|啤酒|白酒|红酒|应酬|宿醉|酒局/,
+    check:function(r){ if(r.sleepHours==null) return null; return (r.sleepHours<6.5||(r.mood!=null&&r.mood<=2)); },
+    yes:function(r){ return '喝酒后睡 '+f1(r.sleepHours)+' h，醒来状态也偏低——酒精会打碎后半夜的深睡，睡够时长也不等于睡好。'; },
+    no:function(r){ return '这天喝了酒但睡了 '+f1(r.sleepHours)+' h，暂时没在数据上留下痕迹，不过尽量别把酒局排在工作日前一晚。'; } },
+
+  { id:'sick', cat:'body', rx:'mood', self:1, label:'身体不适 / 在吃药',
     re:/低烧|发烧|发热|感冒|咳嗽|喉咙|咽痛|头痛|头晕|鼻塞|流鼻涕|拉肚子|腹泻|胃疼|胃痛|肠胃|过敏|不舒服|不适|生病|吃药|感冒药|退烧药|消炎|牙疼|牙痛|口腔溃疡|发炎/,
-    tip:'备注提到身体不适或在吃药：这几天别用评分苛责自己，运动先停或减半，多喝温水、按医嘱服药；持续不退或加重就去医院。' },
-  { key:'sleep_bad', icon:'🌙', label:'睡眠被打断', pri:3,
-    re:/熬夜|失眠|睡不着|没睡好|睡不好|早醒|噩梦|通宵|补觉|起不来|睡太久/,
-    tip:'备注提到睡不好：今晚把上床时间定在比昨天早 30 分钟，睡前 1 小时放下手机，比硬躺着更管用。' },
-  { key:'fatigue', icon:'😪', label:'容易累 / 犯困', pri:3.5,
-    re:/累|疲惫|乏|没精神|困|睡不醒|浑身没劲|提不起劲/,
-    tip:'备注提到累或犯困：先把今晚入睡时间提前 30 分钟，连续两天犯困多半是睡眠债，不是懒，别用咖啡硬顶。' },
-  { key:'caffeine', icon:'☕', label:'咖啡因摄入', pri:4,
-    re:/咖啡|奶茶|浓茶|能量饮料|美式|拿铁/,
-    tip:'备注提到咖啡或奶茶：下午 3 点后尽量别喝，一杯奶茶的咖啡因足够顶到半夜，会直接推后入睡时间。' },
-  { key:'diet', icon:'🍱', label:'饮食偏油 / 偏外卖', pri:5,
-    re:/外卖|快餐|炸鸡|汉堡|烧烤|火锅|泡面|零食|甜食|夜宵/,
-    tip:'备注提到外卖或重口味：不用戒，先加一份蔬菜或水果，把「主食＋肉」的组合拆开就够。' },
-  { key:'appetite', icon:'🥣', label:'胃口不好 / 在控制饮食', pri:6,
-    re:/没胃口|吃不下|不想吃|节食|减肥|减脂|少吃了/,
-    tip:'备注提到没胃口或在控制饮食：少量多餐比硬撑一顿更稳，蛋白质别断，别用不吃来换体重。' },
-  { key:'busy', icon:'💻', label:'忙 / 赶进度', pri:7,
-    re:/赶作业|加班|考试|复习|deadline|ddl|开会|项目|忙|通宵做/,
-    tip:'备注提到忙或赶进度：每 50 分钟起身 2 分钟，比连续硬坐更能救久坐分，晚上也更容易入睡。' },
-  { key:'stress', icon:'🫧', label:'情绪压力', pri:8,
-    re:/压力|焦虑|紧张|烦|崩溃|崩|emo|心情不好|难过|低落|哭|烦躁/,
-    tip:'备注提到情绪压力：睡前写三行「今天完成了什么」，比复盘没做完的更容易让大脑关机。' },
-  { key:'period', icon:'🌸', label:'生理期', pri:9,
+    check:function(){ return null; },
+    na:function(){ return '这天身体不在状态，评分先别当回事——运动可停或减半，按医嘱吃药，持续不退或加重就去医院。'; } },
+
+  { id:'recover', cat:'body', rx:'exercise', self:1, label:'在恢复',
+    re:/痊愈|好转|好多了|恢复了|退烧|快好|好一些|刚好|刚退|差不多好|只剩|仅剩/,
+    check:function(){ return null; },
+    na:function(){ return '在恢复期，运动按平时的六成来、别连着两天练，睡眠优先于运动——急着补练最容易反复。'; } },
+
+  { id:'period', cat:'body', rx:'exercise', self:1, label:'生理期',
     re:/生理期|例假|姨妈|痛经|经期/,
-    tip:'备注提到生理期：这几天运动强度减半、以拉伸散步为主，补一点含铁和蛋白质的食物，别硬扛。' },
-  { key:'alcohol', icon:'🍺', label:'饮酒', pri:10,
-    re:/喝酒|啤酒|白酒|应酬|宿醉|酒局|喝了酒/,
-    tip:'备注提到喝酒：当晚深睡会被打折，第二天别安排高强度运动，多喝水，酒局尽量排在周末。' },
-  { key:'exercise', icon:'🏃', label:'有运动记录', pri:11,
-    re:/跑步|健身|走路|散步|游泳|瑜伽|打球|骑行|跳绳|拉伸|操场|爬山/,
-    tip:'备注里有运动记录：保持这种「顺手记一句」的习惯，一周后回看，最容易坚持的那个项目就是你的主线。' }
+    check:function(){ return null; },
+    na:function(){ return '生理期这几天把运动换成拉伸或散步，补一点含铁和蛋白质的食物（瘦肉、蛋、豆制品），别硬扛。'; } },
+
+  { id:'mood', cat:'mood', rx:'mood', label:'情绪不好 / 压力大',
+    re:/压力|焦虑|紧张|烦|崩溃|emo|心情不好|难过|低落|哭|委屈|烦死/,
+    check:function(r){ if(r.mood==null&&r.bodyScore==null) return null; return ((r.mood!=null&&r.mood<=2)||(r.bodyScore!=null&&r.bodyScore<=2)); },
+    yes:function(r){ return '情绪差，自评也给了 '+f1(r.mood)+' 分——身体感受和情绪是一致的，这天别再加训练量了。'; },
+    no:function(r){ return '情绪不高，但自评还行（'+f1(r.mood)+' 分）——更像一时的心情起伏，睡一觉多半能缓过来。'; } },
+
+  { id:'busy', cat:'life', rx:'sit', label:'加班 / 赶进度',
+    re:/加班|赶作业|赶工|考试|复习|deadline|ddl|开会|项目忙|忙了一天/,
+    check:function(r){ return r.sitHours==null?null:(r.sitHours>8); },
+    yes:function(r){ return '忙的时候久坐到了 '+f1(r.sitHours)+' h，这就是扣分最多的地方——每 50 分钟起身 2 分钟，比整段休息更容易做到。'; },
+    no:function(r){ return '虽然忙，久坐只有 '+f1(r.sitHours)+' h，这点保持得不错。'; } },
+
+  { id:'takeout', cat:'diet', rx:'meals', label:'外卖 / 重口味',
+    re:/外卖|快餐|炸鸡|汉堡|烧烤|火锅|泡面|零食|甜食|夜宵|麻辣/,
+    check:function(r){ if(!r.foodType) return null; return (r.foodType==='外卖为主'||r.foodType==='快餐居多'); },
+    yes:function(r){ return '你说的和「主要食物」选的一致（'+r.foodType+'）——外卖不必戒，加一份蔬菜或水果，把「主食＋肉」拆开就行。'; },
+    no:function(r){ return '这天「主要食物」选的是'+r.foodType+'，和备注里的重口味不完全对得上，以你自己的感受为准。'; } },
+
+  { id:'appetite', cat:'diet', rx:'meals', label:'没胃口 / 在控制饮食',
+    re:/没胃口|吃不下|不想吃|节食|减肥|减脂|少吃|只吃了一顿/,
+    check:function(r){ if(!r.meals) return null; return (r.meals.filter(Boolean).length<=1); },
+    yes:function(r){ return '只吃了 '+r.meals.filter(Boolean).length+' 顿，和三餐规律的方向相反——少量多餐比一顿不吃更稳，蛋白质别断。'; },
+    no:function(r){ return '虽然胃口一般，三餐还是吃了 '+r.meals.filter(Boolean).length+' 顿，这点做得比感觉好。'; } },
+
+  { id:'exercise_done', cat:'life', rx:'exercise', label:'有运动',
+    re:/跑步|健身|走路|散步|游泳|瑜伽|打球|骑行|跳绳|拉伸|操场|爬山|练了/,
+    check:function(r){ return r.exerciseMin==null?null:(r.exerciseMin>0); },
+    yes:function(r){ return '运动了 '+r.exerciseMin+' 分钟，这条已经记进「运动」维度了，继续保持这个记录习惯。'; },
+    no:function(r){ return '备注提到运动，但「运动时长」没填或填了 0——补填一下，这一项的 20 分就能算进去。'; } },
+
+  { id:'water_low', cat:'diet', rx:'water', label:'喝水少',
+    re:/没喝水|忘了喝水|水喝得少|喝水少|一天没喝/,
+    check:function(r){ return r.waterMl==null?null:(r.waterMl<1200); },
+    yes:function(r){ return '确实只喝了 '+r.waterMl+' ml，离 1500 ml 差 '+(1500-r.waterMl)+' ml，大约 '+(Math.ceil((1500-r.waterMl)/250))+' 杯（250 ml）。'; },
+    no:function(r){ return '其实喝了 '+r.waterMl+' ml，已经够 1500 ml 的目标了，感受上「没怎么喝」可能只是没留意。'; } }
 ];
+
+function noteFactsOf(rec, prevRec){
+  var note=String((rec&&rec.note)||'');
+  if(!note) return [];
+  var out=[];
+  NOTE_FACTS.forEach(function(f){
+    if(!f.re.test(note)) return;
+    var v=null;
+    try{ v=f.check(rec, prevRec); }catch(e){ v=null; }
+    var text;
+    if(v===true||v==='sit') text=f.yes?f.yes(rec, prevRec):null;
+    else if(v===false) text=f.no?f.no(rec, prevRec):null;
+    else text=f.na?f.na(rec, prevRec):null;
+    if(!text) return;
+    out.push({ fact:f, verdict:v, text:text });
+  });
+  return out;
+}
+/* 兼容旧调用：只取文字 */
 function noteTagsOf(text){
   if(!text) return [];
-  return NOTE_RULES.filter(function(r){ return r.re.test(String(text)); });
+  return NOTE_FACTS.filter(function(f){ return f.re.test(String(text)); });
 }
-function noteTips(text, limit){
-  var hit=noteTagsOf(text).sort(function(a,b){ return a.pri-b.pri; });
-  return hit.slice(0, limit||1).map(function(r){ return r.icon+' '+r.tip; });
+function noteTips(textArr, limit){
+  var rec={ note:textArr };
+  return noteFactsOf(rec, null).slice(0, limit||1).map(function(x){ return x.text; });
 }
-function collectNoteTags(winRecs){
-  var map={};
-  winRecs.forEach(function(d){
-    var note=d.rec&&d.rec.note;
-    if(!note) return;
-    noteTagsOf(note).forEach(function(r){
-      if(!map[r.key]) map[r.key]={ rule:r, days:[] };
-      if(map[r.key].days.indexOf(d.date)<0) map[r.key].days.push(d.date);
+
+/* ---------- 归因：这天在每个维度丢了多少分 ---------- */
+function dayDeficit(rec){
+  var s=scoreDay(rec);
+  if(!s) return [];
+  var out=[];
+  for(var k in s.parts){
+    if(s.parts[k]==null) continue;
+    var lost=DIM_MAX[k]-s.parts[k];
+    if(lost>0) out.push({ dim:k, lost:lost, got:s.parts[k], max:DIM_MAX[k] });
+  }
+  return out.sort(function(a,b){ return b.lost-a.lost; });
+}
+/* 一周累计各维度丢分 */
+function weekDeficit(filled){
+  var acc={};
+  filled.forEach(function(f){
+    dayDeficit(f.rec).forEach(function(d){
+      acc[d.dim]=acc[d.dim]||{ dim:d.dim, lost:0, days:0 };
+      acc[d.dim].lost+=d.lost; acc[d.dim].days++;
     });
   });
-  return Object.keys(map).map(function(k){ return map[k]; })
-    .sort(function(a,b){ return a.rule.pri-b.rule.pri; });
+  return Object.keys(acc).map(function(k){ return acc[k]; })
+    .sort(function(a,b){ return b.lost-a.lost; });
 }
-function noteBlockHTML(winRecs){
-  var tags=collectNoteTags(winRecs);
-  if(!tags.length) return '';
-  var shown=tags.slice(0,4);
-  return '<div class="card">'+
-    '<div class="card-title">📝 备注里提到的 <span class="unit">按你写的备注自动归类</span></div>'+
-    shown.map(function(t){
-      return '<div class="tip-item"><span class="ti">'+t.rule.icon+'</span><span><b>'+t.rule.label+'</b> · '+t.days.length+' 天<br>'+t.rule.tip+'</span></div>';
-    }).join('')+
-    '<div class="hint" style="margin-top:8px">这几条只针对作息、运动、饮食等生活习惯；身体不适请以医生意见为准，本页不做任何诊断。</div>'+
-  '</div>';
+
+/* ---------- 处方：给剂量，不给口号 ---------- */
+function rxFor(dim, rec, opts){
+  opts=opts||{};
+  var r=rec||{};
+  if(dim==='sleep'){
+    if(r.sleepHours!=null&&r.sleepHours<3){
+      return '只睡了 '+f1(r.sleepHours)+' h，这个数字更像没填准（比如把 7 填成 1）——先核对入睡和起床时间，再看要不要调作息。';
+    }
+    if(r.sleepHours!=null&&r.sleepHours>9.5){
+      return '睡了 '+f1(r.sleepHours)+' h，偏多了：睡太久通常是前面欠的睡眠债在还，但别超过 9 小时——周末补觉比平时多 1 小时以内就够，睡过头反而更昏。';
+    }
+    if(r.sleepHours!=null&&r.sleepHours<7){
+      var need=7-r.sleepHours;
+      var step=Math.min(0.5, Math.ceil(need*2)/2);   /* 一次最多挪半小时，符合习惯养成节奏 */
+      if(r.bedTime){
+        var bedNow=bedToHours(r.bedTime);
+        var base=(opts && opts.baseBed!=null)?opts.baseBed:null;
+        var tgt;
+        if(base!=null && base<bedNow-0.5){
+          tgt=hhmm(base+0.25);
+          return '今晚把上床时间从 '+r.bedTime+' 收回 '+tgt+'——这是你这周真正做到过的点上，比凭空定一个「23:30 前睡」现实得多；连着三天能补回 1 小时左右。';
+        }
+        tgt=hhmm(bedNow-step);
+        return '今晚把上床时间从 '+r.bedTime+' 收到 '+tgt+'（提前 '+Math.round(step*60)+' 分钟），比一次提前两小时更容易做到；连着三天就能补回 1.5 h 左右。';
+      }
+      return '今晚比昨天早 '+Math.round(step*60)+' 分钟上床，还差 '+f1(need)+' h 分三天补，别一次硬睡。';
+    }
+    return '这天的睡眠时长已经达标，重点放在固定入睡时间上，误差控制在半小时内。';
+  }
+  if(dim==='water'){
+    var w=r.waterMl!=null?r.waterMl:(opts.avgWater||0);
+    var gap=Math.max(0,1500-w);
+    if(gap>0) return '还差 '+gap+' ml，大约 '+Math.ceil(gap/250)+' 杯（250 ml）——分两次喝掉，一次 500 ml 撑不下反而会不想喝。';
+    return '水量已经够了，注意别用含糖饮料凑数。';
+  }
+  if(dim==='exercise'){
+    var e=r.exerciseMin!=null?r.exerciseMin:(opts.avgEx!=null?opts.avgEx:0);
+    if(e<30) return '离 30 分钟还差 '+Math.max(0,30-e)+' 分钟，拆成「快走 15 分钟 ×2」也算，不用一次凑满。';
+    return '运动量够了，重点变成「每周至少 3 次」而不是每次更长。';
+  }
+  if(dim==='meals'){
+    if(opts.body==='sick'||opts.body==='recovering'){
+      return '生病时胃口差是正常的，别按「三餐齐全」要求自己——少量多餐、每顿有蛋白质（鸡蛋、牛奶、粥加蛋）就够，别空着肚子吃药。';
+    }
+    if(r.meals){
+      var miss=[];
+      ['早餐','午餐','晚餐'].forEach(function(n,i){ if(!r.meals[i]) miss.push(n); });
+      if(miss.length) return '这天缺了'+miss.join('、')+'——先把缺的那顿补成「有蛋白质的最小份」（鸡蛋、牛奶、酸奶都算），比追求吃好更容易坚持。';
+    }
+    return '三餐规律还差一点，把吃饭时间固定下来比吃什么都重要。';
+  }
+  if(dim==='sit'){
+    if(r.sitHours!=null&&r.sitHours>6){
+      var n=Math.max(2,Math.round(r.sitHours)-2);
+      return '久坐 '+f1(r.sitHours)+' h，按每坐 1 小时起身 2 分钟算，这天至少要起身 '+n+' 次——接水、站着回消息都算。';
+    }
+    return '久坐时长控制得不错，保持每 1 小时起来一次就行。';
+  }
+  if(dim==='mood'){
+    return '状态分偏低时先别加任务：睡前写下今天做完的三件事，比复盘没做完的更容易让大脑关机。';
+  }
+  return '';
 }
-/* 含糖饮料：结合备注里写的「为什么喝」，给对应的建议，而不是一律「换成无糖」 */
+
+/* ---------- 睡眠相位：评分给满分、但其实不对的那类问题 ---------- */
+function bedBaseOf(winRecs){
+  var beds=[];
+  winRecs.forEach(function(d){ if(d.rec&&d.rec.bedTime) beds.push(bedToHours(d.rec.bedTime)); });
+  if(!beds.length) return null;
+  return Math.min.apply(null,beds);        /* 本周最早的一次，证明「你自己做到过」 */
+}
+function sleepPhaseAdvice(rec, winRecs){
+  if(!rec||!rec.bedTime) return null;
+  var bed=bedToHours(rec.bedTime);
+  if(bed<25) return null;                  /* 00:00~01:00 之间的入睡不算相位问题 */
+  if(rec.sleepHours==null||rec.sleepHours<7) return null;   /* 时长不足走正常扣分逻辑 */
+  var msg='睡了 '+f1(rec.sleepHours)+' h，评分会给满分——但入睡是 '+rec.bedTime+'，这是「睡得够、睡得晚」，睡前那段时间一直在往后跑，光看时长发现不了。';
+  var base=bedBaseOf(winRecs);
+  if(base!=null&&base<bed-0.5){
+    msg+='你自己这周最早 '+hhmm(base)+' 就能睡，今晚先回到 '+hhmm(base+0.25)+'，别一步跳到 23:30，跳太狠反而睡不着。';
+  }else{
+    msg+='先把上床时间往前提 30 分钟，同时起床时间别跟着推后，白天多晒半小时太阳——固定起床时间比强迫早睡更有效。';
+  }
+  return msg;
+}
+
+/* ---------- 数据合理性：填错的数字会得出错误结论，先拦住 ---------- */
+function dataSanity(rec){
+  var out=[];
+  if(rec.sleepHours!=null&&rec.sleepHours>16) out.push('睡眠填了 '+f1(rec.sleepHours)+' 小时，超出正常范围——先核对一下入睡/起床时间，这个数八成不是真实时长。');
+  if(rec.exerciseMin!=null&&rec.exerciseMin>300) out.push('运动填了 '+rec.exerciseMin+' 分钟（超过 5 小时），可能是把步数或「走了多少分钟」填进了运动时长。');
+  if(rec.waterMl!=null&&rec.waterMl>6000) out.push('饮水填了 '+rec.waterMl+' ml（超过 6 升），日常范围一般在 1500~3000 ml，确认一下单位。');
+  if(rec.sitHours!=null&&rec.sitHours>18) out.push('久坐填了 '+f1(rec.sitHours)+' 小时，接近一整天——可能是把分钟当小时填了。');
+  return out;
+}
+
+/* ---------- 当天的完整分析 ---------- */
+function analyzeDay(rec, dateStr){
+  if(!rec) return null;
+  var prev=dateStr?records[prevDateStr(dateStr)]:null;
+  var facts=noteFactsOf(rec, prev);
+  var defs=dayDeficit(rec);
+  var sug=null, cups=rec.sugarCups;
+  if(cups!=null&&cups>0) sug=sugarAdviceText(rec, cups);
+  return { facts:facts, defs:defs, sugar:sug, top:defs[0]||null };
+}
+
+/* 含糖饮料：结合备注写的「为什么喝」，且和饮水数据一起看 */
 var SUGAR_REASONS=[
+  { re:/不适|生病|发烧|低烧|感冒|喉咙|咽痛|吃药|药|脉动|电解质|补液|拉肚子|腹泻/,
+    label:'生病补液',
+    tip:'发烧出汗、胃口差都在丢水和电解质，这时候补液比控糖重要——这杯不算违规，好利索了再换回白水。' },
   { re:/困|提神|犯困|熬夜|加班|没睡好|好累|太累/, label:'提神',
-    tip:'靠它提神是最快的，但会把问题推到明天——今晚更难睡。真困先补一杯水、站起来走两分钟，咖啡因尽量放在下午两点前。' },
-  { re:/聚餐|同事|朋友|请客|聚会|饭局|应酬|别人买|送的/, label:'社交场合',
-    tip:'社交场合很难推，不用硬拒：把甜度降一档（少糖或无糖），或者一杯喝一半，比一次戒断更容易坚持。' },
-  { re:/嘴馋|馋|想吃甜|心情|压力|烦|emo|难过|焦虑|委屈/, label:'情绪或嘴馋',
-    tip:'想喝甜的，多半是能量或情绪需要补给。先吃点带蛋白质的（鸡蛋、酸奶、坚果），那股冲动通常 20 分钟内会退。' },
+    tip:'这杯确实能把困压下去，但代价是今晚更难睡——真困先喝一杯水、站起来走两分钟，咖啡因尽量放在下午两点前。' },
+  { re:/聚餐|同事|朋友|请客|聚会|饭局|应酬|别人买|送的/, label:'社交',
+    tip:'社交场合不用硬拒，把甜度降一档或一杯喝一半，比一次戒断更容易坚持。' },
+  { re:/嘴馋|馋|想吃甜|心情|压力|烦|emo|难过|焦虑|委屈/, label:'情绪',
+    tip:'想喝甜的通常是能量或情绪需要补给，先吃点带蛋白质的（鸡蛋、酸奶、坚果），那股冲动一般 20 分钟内会退。' },
   { re:/渴|解渴|热|出汗|口干|太干/, label:'解渴',
-    tip:'口渴时先喝一杯白水——多数「想喝饮料」其实是缺水。想要味道就换气泡水加片柠檬。' },
+    tip:'口渴时先喝一杯白水——多数「想喝饮料」其实是缺水，想要味道就换气泡水加片柠檬。' },
   { re:/运动|健身|跑步|打球|锻炼|练完/, label:'运动后',
     tip:'运动后补糖有道理，但一杯奶茶的糖通常超过刚才的消耗，优先水加一份蛋白质。' },
   { re:/习惯|每天|固定|离不开|下午茶|老规矩/, label:'习惯',
-    tip:'习惯性的那杯最难改，别一次戒断：先换小杯，或把固定那杯改成无糖，两周后再减次数。' }
+    tip:'习惯性的那杯最难改，先换小杯或改成无糖，两周后再减次数。' }
 ];
-function sugarAdvice(rec){
-  var cups=rec.sugarCups;
-  if(cups==null||cups<=0) return null;
+function sugarAdviceText(rec, cups){
   var note=String(rec.note||'');
   var head=cups+' 杯含糖饮料';
   for(var i=0;i<SUGAR_REASONS.length;i++){
     if(SUGAR_REASONS[i].re.test(note)) return head+'（'+SUGAR_REASONS[i].label+'）——'+SUGAR_REASONS[i].tip;
   }
-  if(rec.waterMl!=null&&rec.waterMl<1000) return head+'，白水却只有 '+rec.waterMl+' ml——先把总量换过来，饮料换成水，一周就能看出差别。';
-  return head+'——明天换成无糖茶或气泡水，先把杯数减半。';
+  if(rec.waterMl!=null&&rec.waterMl<1000)
+    return head+'，白水只有 '+rec.waterMl+' ml——两件事要分开算：水照样得补到 1500 ml，饮料这边先减半。';
+  return head+'——明天先把杯数减半，换成无糖茶或气泡水，口感差得没想象中大。';
 }
-function dayTip(rec){
-  const t=[];
-  if(rec.sleepHours!=null&&rec.sleepHours<6) t.push('昨晚睡得有点少，今天可以早点收尾，把觉补回来');
-  if(rec.sitHours!=null&&rec.sitHours>8) t.push('今天久坐有点久，睡前可以拉伸放松几分钟');
-  if(rec.exerciseMin!=null&&rec.exerciseMin===0) t.push('今天还没动起来，睡前十分钟拉伸也算数');
-  if(rec.waterMl!=null&&rec.waterMl<1000) t.push('今天喝水偏少，睡前再补一小杯');
-  if(rec.meals&&!rec.meals[0]) t.push('今天跳过了早餐，明早可以准备点简单的');
-  var sugAdv=sugarAdvice(rec);
-  if(sugAdv){
-    t.push(sugAdv);
-    /* 含糖这条已经把吃喝/情绪说到了，这里只补身体类的提醒，避免同类重复 */
-    noteTagsOf(rec.note).filter(function(r){ return ['sick','recover','period'].indexOf(r.key)>=0; })
-      .slice(0,1).forEach(function(r){ t.push(r.icon+' '+r.tip); });
-  } else {
-    noteTips(rec.note, 1).forEach(function(x){ t.push(x); });
+function sugarAdvice(rec){ return (rec&&rec.sugarCups>0)?sugarAdviceText(rec, rec.sugarCups):null; }
+
+/* ---------- 身体状态：用来调节其他建议的口径 ---------- */
+function bodyStateOf(rec, facts){
+  var has=function(k){ return facts.some(function(x){ return x.fact.id===k; }); };
+  var note=String((rec&&rec.note)||'');
+  if(has('recover')){
+    if(/基本痊愈|痊愈|好多了|差不多好|好一些|只剩|仅剩|快好/.test(note)) return 'healing';
+    return 'recovering';
   }
-  if(!t.length) t.push('今天各项都比较稳，继续保持');
+  if(has('sick')) return 'sick';
+  if(has('period')) return 'period';
+  return null;
+}
+var BODY_TIP={
+  sick:'身体不舒服这天，评分不用当真：水喝够、按医嘱吃药，运动先停着；持续不退或加重就去医院。',
+  recovering:'在恢复期，数据偏低是正常的，别拿去和平时比：运动按平时六成、别连着两天练，睡眠优先于补练。',
+  healing:'基本好了：运动从平时一半起步，别一次补回前面欠下的量；这周先别安排连续两天训练。',
+  period:'生理期这几天，运动换成拉伸或散步，补一点含铁和蛋白质的（瘦肉、蛋、豆制品），别硬扛。'
+};
+
+/* ---------- 今日 / 记录页回顾：先说该改什么，再说凭什么 ---------- */
+function dayTip(rec){
+  if(!rec) return [];
+  var dateStr=null;
+  try{ dateStr=currentKey; }catch(e){}
+  var a=analyzeDay(rec, dateStr);
+  var body=bodyStateOf(rec, a.facts);
+  var t=[];
+  var winRecs=[];
+  try{ winRecs=weekWindow().map(function(d){ return { date:d, rec:records[d]||null }; }); }catch(e){}
+
+  /* 0) 数字本身不合理时，后面的分析都不作数 */
+  var bad=dataSanity(rec);
+  if(bad.length) return bad.slice(0,2);
+
+  /* 1) 评分看不见的问题优先：睡得够但睡得太晚 */
+  var phase=sleepPhaseAdvice(rec, winRecs);
+  if(phase) t.push(phase);
+
+  /* 2) 只讲丢分最多的那一项，并给剂量；身体不适时跳过运动项（那本来就该少） */
+  var named={ sleep:'睡眠', exercise:'运动', water:'饮水', meals:'三餐', sit:'久坐', mood:'状态' };
+  var skip={};
+  if(a.sugar) skip.water=1;   /* 含糖那条已经讲过补水，别再说一遍喝水 */
+  for(var i=0;i<a.defs.length;i++){
+    var d=a.defs[i];
+    if(skip[d.dim]) continue;
+    /* 生病/恢复期：吃和动都不该被当成待改项，否则会出现「建议你去改，又说别要求自己」的矛盾 */
+    if(body && d.dim==='exercise') continue;                       /* 运动交给身体状态那段统一说 */
+    if((body==='sick'||body==='recovering') && d.dim==='meals') continue;   /* 生病时胃口差不算扣分项 */
+    var rx=rxFor(d.dim, rec, { baseBed: bedBaseOf(winRecs), body: body });
+    if(rx){
+      var lead = d.lost>=8 ? ('最值得改的是'+named[d.dim]+'（这项丢了 '+d.lost+' 分）：')
+                           : ('还可以顺手改一下'+named[d.dim]+'（丢了 '+d.lost+' 分）：');
+      t.push(lead+rx); break;
+    }
+  }
+
+  /* 3) 备注 × 数据：身体类放到最后统一说，这里只讲能落到处方上的 */
+  var bodyIds=['sick','recover','period'];
+  var facs=a.facts.filter(function(x){ return bodyIds.indexOf(x.fact.id)<0; });
+  facs.slice(0,1).forEach(function(x){ t.push(x.text); });
+
+  /* 4) 含糖饮料（有原因就结合原因，生病时算合理需求） */
+  if(a.sugar) t.push(a.sugar);
+
+  /* 5) 身体状态收尾 */
+  if(body) t.push(BODY_TIP[body]);
+
+  if(!t.length){
+    var filled=0;
+    if(rec.sleepHours!=null) filled++;
+    if(rec.exerciseMin!=null) filled++;
+    if(rec.waterMl!=null) filled++;
+    if(rec.meals) filled++;
+    if(rec.sitHours!=null) filled++;
+    if(rec.mood!=null||rec.bodyScore!=null) filled++;
+    if(filled<3){
+      t.push('这天只填了 '+filled+' 项，还看不出规律——凑齐 3 项以上（睡眠、饮水、久坐最容易填）才谈得上分析。');
+    }else{
+      t.push('这天各项都在正常范围，没有明显扣分项，保持这个节奏就好。');
+    }
+  }
   return t;
 }
-function bedHourLabel(v){ const h=Math.round(v)%24; return h===0?'24点':h+'点'; }
-function generateTips(winRecs){
-  const filled=winRecs.filter(d=>d.rec);
-  const n=filled.length;
-  const tips=[];
-  if(!n) return [{type:'info', text:'还没有记录数据，先从今天开始填一份吧。'}];
-  /* 睡眠 */
-  const sleeps=filled.map(d=>d.rec.sleepHours).filter(v=>v!=null);
-  const aSleep=avg(sleeps);
-  let streak=0;
-  for(let i=filled.length-1;i>=0;i--){ const s=filled[i].rec.sleepHours; if(s!=null&&s<7) streak++; else break; }
-  if(streak>=3) tips.push({type:'sleep', text:`最近连续 ${streak} 天睡眠不足 7 小时，今晚可以优先把作息往前调 30 分钟到 1 小时。`});
-  else if(aSleep!=null&&aSleep<6.5) tips.push({type:'sleep', text:`最近平均睡眠 ${aSleep.toFixed(1)} 小时，略低于 7 小时，可以试着每天提前 15 分钟上床。`});
-  const beds=filled.map(d=>d.rec.bedTime).filter(Boolean).map(bedToHours);
-  if(beds.length>=3){
-    const aBed=avg(beds);
-    if(aBed>24) tips.push({type:'sleep', text:`最近平均入睡时间在${bedHourLabel(aBed)}以后，可以试试固定一个上床时间，睡前半小时少看手机。`});
+
+/* ---------- 周报：备注 × 数据对照 ----------
+ * 不只统计「备注里提到了什么」，还要说清：你说的，数据支持吗？
+ * 支持 → 结论可信；不支持 → 修正归因；没数据 → 提示补哪一项
+ */
+function collectNoteFacts(winRecs){
+  var map={};
+  winRecs.forEach(function(d){
+    if(!d.rec) return;
+    var prev=null;
+    try{ prev=records[prevDateStr(d.date)]||null; }catch(e){}
+    noteFactsOf(d.rec, prev).forEach(function(x){
+      var k=x.fact.id;
+      if(!map[k]) map[k]={ fact:x.fact, ok:0, no:0, na:0, self:0, days:[], notes:[], sample:x.text };
+      map[k].notes.push({ date:d.date, note:String(d.rec.note||'') });
+      if(x.verdict===true||x.verdict==='sit') map[k].ok++;
+      else if(x.verdict===false) map[k].no++;
+      else if(x.fact.self) map[k].self++;
+      else map[k].na++;
+      map[k].days.push(d.date);
+    });
+  });
+  return Object.keys(map).map(function(k){ return map[k]; })
+    .sort(function(a,b){ return (b.ok*3+b.no*2+b.na)-(a.ok*3+a.no*2+a.na); });
+}
+function noteBlockHTML(winRecs){
+  var list=collectNoteFacts(winRecs);
+  if(!list.length) return '';
+  var verifiable=list.filter(function(x){ return !x.fact.self; });
+  var selfs=list.filter(function(x){ return x.fact.self; });
+  var tot={ok:0,no:0,na:0};
+  verifiable.forEach(function(x){ tot.ok+=x.ok; tot.no+=x.no; tot.na+=x.na; });
+
+  var html='';
+  /* 自陈事实：生病/恢复/生理期这类，本来就没有数据能对照，单独说明 */
+  if(selfs.length){
+    var days=[];
+    selfs.forEach(function(x){ days=days.concat(x.days); });
+    days=days.filter(function(v,i,a){ return a.indexOf(v)===i; }).sort();
+    var bodyFact=selfs.filter(function(x){ return x.fact.id==='sick'||x.fact.id==='recover'; })[0];
+    var first=bodyFact&&bodyFact.notes[0], last=bodyFact&&bodyFact.notes[bodyFact.notes.length-1];
+    var line='';
+    var cut=function(t){ t=String(t||''); return t.length>18?t.slice(0,18)+'…':t; };
+    if(first&&last&&first.date!==last.date) line=cut(first.note)+'（'+first.date.slice(5)+'）→ '+cut(last.note)+'（'+last.date.slice(5)+'）';
+    else if(last) line=cut(last.note)+'（'+last.date.slice(5)+'）';
+    html+='<div class="card">'+
+      '<div class="card-title">🩺 这周的身体状况 <span class="unit">'+days.length+' 天</span></div>'+
+      '<div class="tip-item"><span class="ti">·</span><span>'+(line?esc(line)+'<br>':'')+
+      '这段期间的评分只作参考，不和健康时比——恢复期睡眠多、运动少都是正常的，别拿这几天的分数判断自己的状态。'+
+      '</span></div></div>';
   }
-  /* 运动 */
-  const exDays=filled.filter(d=>(d.rec.exerciseMin||0)>0).length;
-  if(n>=3&&exDays<3) tips.push({type:'exercise', text:`最近 ${n} 天里运动了 ${exDays} 次，可以安排一次 30 分钟左右的低强度运动，比如快走、慢跑或拉伸。`});
-  /* 饮水 */
-  const waters=filled.map(d=>d.rec.waterMl).filter(v=>v!=null);
-  const aWater=avg(waters);
-  if(aWater!=null&&aWater<1200) tips.push({type:'water', text:`平均每天饮水约 ${Math.round(aWater)} ml，离 1500 ml 还差一点，可以随身带个水杯，下课顺手接水。`});
-  /* 饮食 */
-  const skipBreakfast=filled.filter(d=>d.rec.meals&&!d.rec.meals[0]).length;
-  if(n>=3&&skipBreakfast>=3) tips.push({type:'diet', text:`最近 ${skipBreakfast} 天没吃早餐，可以提前准备一些简单早餐，比如牛奶加面包、鸡蛋或燕麦。`});
-  const hasMeals=filled.filter(d=>d.rec.meals).length;
-  const regularDays=filled.filter(d=>d.rec.meals&&d.rec.meals.filter(Boolean).length===3).length;
-  if(n>=4&&hasMeals>=3&&regularDays<hasMeals/2) tips.push({type:'diet', text:`三餐规律的日子只有 ${regularDays}/${hasMeals} 天，尽量让吃饭时间稳定下来，饿过头反而容易暴饮暴食。`});
-  const takeout=filled.filter(d=>d.rec.foodType==='外卖为主'||d.rec.foodType==='快餐居多').length;
-  if(n>=4&&takeout>=Math.ceil(n/2)) tips.push({type:'diet', text:`最近外卖/快餐吃得比较多（${takeout}/${n} 天），条件允许的话可以多去几次食堂，或者周末自己做一顿。`});
-  /* 含糖饮料 */
-  const sugarDays=filled.map(d=>d.rec.sugarCups).filter(v=>v!=null&&v>0);
-  const sugarTotal=sugarDays.reduce((a,b)=>a+b,0);
-  if(sugarTotal>=3) tips.push({type:'diet', text:`这周含糖饮料一共 ${sugarTotal} 杯（${sugarDays.length} 天），不用戒，挑「最想喝的那一两次」留着，其余换成无糖就够。`});
-  /* 久坐 */
-  const sits=filled.map(d=>d.rec.sitHours).filter(v=>v!=null);
-  const aSit=avg(sits);
-  if(aSit!=null&&aSit>6) tips.push({type:'sit', text:`平均每天久坐约 ${aSit.toFixed(1)} 小时，可以每坐 1 小时就站起来活动几分钟，接水、伸个懒腰都算。`});
-  if(!tips.length) tips.push({type:'good', text:'这一周整体比较规律，继续保持，也可以把精力放在稳定作息上。'});
-  return tips;
+  if(!verifiable.length) return html;
+
+  var sumWord='';
+  if(tot.ok+tot.no>0){
+    sumWord='其中 '+(tot.ok+tot.no)+' 天能用数据判断，'+tot.ok+' 天对得上'+(tot.no?('、'+tot.no+' 天对不上'):'')+'。';
+    if(tot.na) sumWord+='另有 '+tot.na+' 天缺关键数据，补上对应的项（睡眠、久坐、饮水）就能判断。';
+  }else if(tot.na){
+    sumWord='这些备注目前没法判断——补上对应的项，下次就能对上。';
+  }
+  var shown=verifiable.slice(0,4);
+  html+='<div class="card">'+
+    '<div class="card-title">📝 备注和数据对得上吗 <span class="unit">'+verifiable.length+' 类 / '+verifiable.reduce(function(a,b){return a+b.days.length;},0)+' 天</span></div>'+
+    shown.map(function(x){
+      var badge, color, mark;
+      if(x.ok&&!x.no){ badge='数据印证'; color='#059669'; mark='✓'; }
+      else if(x.no&&!x.ok){ badge='数据不一致'; color='#f59e0b'; mark='≠'; }
+      else if(x.ok&&x.no){ badge='部分印证'; color='#059669'; mark='✓'; }
+      else { badge='缺数据'; color='#9ca3af'; mark='—'; }
+      return '<div class="tip-item"><span class="ti" style="color:'+color+';font-weight:700">'+mark+'</span>'+
+        '<span><b>'+x.fact.label+'</b> · '+x.days.length+' 天'+
+        '　<span style="color:'+color+'">'+badge+'</span>'+
+        '<br>'+x.sample+'</span></div>';
+    }).join('')+
+    (sumWord?'<div class="hint" style="margin-top:8px">'+sumWord+'</div>':'')+
+    '<div class="hint" style="margin-top:4px">「数据印证」= 备注的说法和你填的数字一致，结论可信；「不一致」= 数字不支持这个说法，归因要换个方向；「缺数据」= 相关项没填，判断不了。</div>'+
+  '</div>';
+  return html;
+}
+
+function sumArr(a){ return a.reduce(function(x,y){ return x+y; },0); }
+
+function generateTips(winRecs){
+  var filled=winRecs.filter(function(d){ return d.rec; });
+  var n=filled.length;
+  if(!n) return [{ type:'info', text:'还没有记录数据，先从今天开始填一份吧。' }];
+  var tips=[];
+
+  /* ---- 1. 睡眠债：7 小时标准与实际的差额累计 ---- */
+  var sleeps=filled.map(function(d){ return d.rec.sleepHours; }).filter(function(v){ return v!=null; });
+  if(sleeps.length>=3){
+    var debt=sleeps.length*7-sumArr(sleeps);
+    if(debt>=3){
+      tips.push({ type:'sleep', w:debt*4,
+        text:'这 '+sleeps.length+' 天累计少睡 '+f1(debt)+' 小时（平均每天 '+f1(avg(sleeps))+' 小时），相当于欠了 '+f1(debt/7)+' 个整晚。睡眠债是按天累积的，周末一次补 10 小时补不回来——每天提前 20~30 分钟，三到五天才还得清。' });
+    }
+  }
+
+  /* ---- 2. 睡眠相位：整体后移，而不是某天晚睡 ---- */
+  var beds=filled.filter(function(d){ return d.rec.bedTime; });
+  var bedHrs=beds.map(function(d){ return bedToHours(d.rec.bedTime); });
+  if(bedHrs.length>=3){
+    var aBed=avg(bedHrs);
+    if(aBed>=24.5){
+      var earliest=Math.min.apply(null,bedHrs);
+      tips.push({ type:'sleep', w:22,
+        text:'平均入睡时间是 '+hhmm(aBed)+'，比 24:00 晚 '+f1(aBed-24)+' 小时；睡眠时长够，但生物钟整体在后移。你这周最早 '+hhmm(earliest)+' 就睡过，说明不是睡不着——先把起床时间固定住，入睡时间会自己跟回来。' });
+    }
+  }
+
+  /* ---- 3. 社交时差：周末 vs 工作日 ---- */
+  if(beds.length>=4){
+    var wd=[], we=[];
+    beds.forEach(function(d){
+      var g=parseDate(d.date).getDay();
+      (g===0||g===6?we:wd).push(bedToHours(d.rec.bedTime));
+    });
+    if(wd.length>=2&&we.length>=1){
+      var jet=avg(we)-avg(wd);
+      if(jet>=0.8){
+        tips.push({ type:'sleep', w:16,
+          text:'周末比工作日平均晚睡 '+f1(jet)+' 小时——这叫社交时差，等于每周给自己倒一次时差，周一最难受。把周末晚睡控制在 1 小时内，比平时早睡更能改善周一状态。' });
+      }
+    }
+  }
+
+  /* ---- 4. 运动量：对照每周 150 分钟 ---- */
+  var exMins=filled.map(function(d){ return d.rec.exerciseMin; }).filter(function(v){ return v!=null; });
+  if(exMins.length>=3){
+    var tot=sumArr(exMins);
+    if(tot<150){
+      tips.push({ type:'exercise', w:(150-tot)*0.25,
+        text:'本周累计运动 '+Math.round(tot)+' 分钟，离「每周 150 分钟中等强度」还差 '+Math.round(150-tot)+' 分钟——拆成 5 天各 '+Math.ceil((150-tot)/5)+' 分钟比周末一次练到累更容易坚持，对睡眠的帮助也更稳定。' });
+    }else{
+      tips.push({ type:'exercise', w:6,
+        text:'本周累计运动 '+Math.round(tot)+' 分钟，已经过了每周 150 分钟这条线，接下来重点不是加量，是别断——保持每周 3 次以上的频率比单次更久更重要。' });
+    }
+  }
+
+  /* ---- 5. 饮水：达标天数 ---- */
+  var waters=filled.map(function(d){ return d.rec.waterMl; }).filter(function(v){ return v!=null; });
+  if(waters.length>=3){
+    var okW=waters.filter(function(v){ return v>=1500; }).length;
+    var aW=avg(waters);
+    if(okW<waters.length/2){
+      var gapW=Math.round(1500-aW);
+      tips.push({ type:'water', w:gapW*0.18,
+        text:waters.length+' 天里只有 '+okW+' 天到 1500 ml，平均 '+Math.round(aW)+' ml，差 '+gapW+' ml ≈ '+Math.ceil(gapW/250)+' 杯（250 ml）。上午一杯、下午一杯分开喝，比晚上集中灌更有效——后者多半变成起夜。' });
+    }else{
+      tips.push({ type:'water', w:5,
+        text:waters.length+' 天里有 '+okW+' 天到 1500 ml，饮水这块基本稳了，保持就好。' });
+    }
+  }
+
+  /* ---- 6. 久坐 ---- */
+  var sits=filled.map(function(d){ return d.rec.sitHours; }).filter(function(v){ return v!=null; });
+  if(sits.length>=3){
+    var aS=avg(sits);
+    var over=sits.filter(function(v){ return v>8; }).length;
+    if(aS>7){
+      tips.push({ type:'sit', w:(aS-6)*4,
+        text:'平均每天久坐 '+f1(aS)+' 小时'+(over?('，其中 '+over+' 天超过 8 小时'):'')+'。久坐的伤害主要来自「连续不断」，不是总时长——每坐 1 小时起身 2 分钟，就能把风险降下来，比下班后一次运动更管用。' });
+    }
+  }
+
+  /* ---- 7. 早餐 ---- */
+  var mealDays=filled.filter(function(d){ return d.rec.meals; });
+  if(mealDays.length>=3){
+    var noB=mealDays.filter(function(d){ return !d.rec.meals[0]; }).length;
+    if(noB>=Math.ceil(mealDays.length*0.5)){
+      tips.push({ type:'diet', w:noB*3,
+        text:mealDays.length+' 天里有 '+noB+' 天没吃早餐。早餐缺失会让人在中午更容易选高油高糖的东西——不用做复杂的，前一晚准备「牛奶＋鸡蛋」这种两分钟能吃完的，比定 7 点的闹钟管用。' });
+    }
+  }
+
+  /* ---- 8. 含糖饮料：总量 + 主要理由 ---- */
+  var cupDays=filled.filter(function(d){ return d.rec.sugarCups!=null; });
+  if(cupDays.length>=2){
+    var totS=sumArr(cupDays.map(function(d){ return d.rec.sugarCups; }));
+    if(totS>=3){
+      var labels={};
+      cupDays.forEach(function(d){
+        if(!d.rec.sugarCups) return;
+        var note=String(d.rec.note||'');
+        for(var i=0;i<SUGAR_REASONS.length;i++){
+          if(SUGAR_REASONS[i].re.test(note)){
+            var L=SUGAR_REASONS[i].label;
+            labels[L]=(labels[L]||0)+d.rec.sugarCups;
+            break;
+          }
+        }
+      });
+      var topLabel=Object.keys(labels).sort(function(a,b){ return labels[b]-labels[a]; })[0];
+      var body='这周含糖饮料 '+totS+' 杯'+(topLabel?('，其中「'+topLabel+'」占了 '+labels[topLabel]+' 杯'):'')+'。';
+      if(topLabel==='生病补液') body+='生病期间补液是必要的，这部分不用算进「要改的习惯」里。';
+      else if(topLabel) body+='针对这个理由改，比笼统地「戒糖」有效得多——周报下面的备注对照里有具体做法。';
+      else body+='挑「最想喝的那一两次」留着，其余换无糖，比全面戒断更容易坚持。';
+      tips.push({ type:'diet', w:totS*2, text:body });
+    }
+  }
+
+  /* ---- 9. 备注与数据的一致率 ---- */
+  var nfs=collectNoteFacts(winRecs);
+  var okF=0, noF=0;
+  nfs.forEach(function(x){ okF+=x.ok; noF+=x.no; });
+  if(noF>0){
+    tips.push({ type:'info', w:noF*2,
+      text:'有 '+noF+' 天的备注和数据对不上（比如写了熬夜但睡够 7 小时）。这类天要小心归因——问题可能不在你以为的地方，下面「备注和数据对得上吗」有逐条说明。' });
+  }
+
+  if(!tips.length){
+    tips.push({ type:'good', w:0, text:'这一周睡眠、运动、饮水、三餐、久坐都在正常范围，没有需要特别调整的地方，保持现在的节奏就是最好的策略。' });
+  }
+  tips.sort(function(a,b){ return (b.w||0)-(a.w||0); });
+  return tips.slice(0,4);
 }
 
 /* ================= 周报：维度统计与总结 ================= */
@@ -762,12 +1198,16 @@ function summaryTexts(filled){
   const exd=ex.filter(v=>v>0);
   t.exercise=ex.length?`运动 ${exd.length} 次${exd.length?`，平均每次 ${Math.round(avg(exd))} 分钟`:''}`:'—';
   const w=filled.map(f=>f.rec.waterMl).filter(v=>v!=null);
-  t.water=w.length?`平均每天饮水 ${Math.round(avg(w))} ml`:'—';
+  t.water=w.length?(avg(w)>=1500
+    ?`平均每天饮水 ${Math.round(avg(w))} ml，达标`
+    :`平均每天饮水 ${Math.round(avg(w))} ml，离 1500 ml 还差 ${1500-Math.round(avg(w))} ml`):'—';
   const hasMeals=filled.filter(f=>f.rec.meals).length;
   const rg=filled.filter(f=>f.rec.meals&&f.rec.meals.filter(Boolean).length===3).length;
   t.meals=hasMeals?`三餐规律 ${rg}/${hasMeals} 天`:'—';
   const st=filled.map(f=>f.rec.sitHours).filter(v=>v!=null);
-  t.sit=st.length?`平均每天久坐 ${avg(st).toFixed(1)} 小时`:'—';
+  t.sit=st.length?(avg(st)<=6
+    ?`平均每天久坐 ${avg(st).toFixed(1)} 小时，控制得不错`
+    :`平均每天久坐 ${avg(st).toFixed(1)} 小时，超过 6 小时`):'—';
   const both=[...filled.map(f=>f.rec.mood).filter(v=>v!=null), ...filled.map(f=>f.rec.bodyScore).filter(v=>v!=null)];
   t.mood=both.length?`精神/身体状态平均 ${avg(both).toFixed(1)}/5`:'—';
   return t;
@@ -784,7 +1224,7 @@ function generateSummary(winRecs){
   const good=[], bad=[];
   if(ranked.length){
     const best=ranked[ranked.length-1];
-    if(best.rate>=0.65) good.push(`${DIM_NAME[best.k]}：${texts[best.k]}${best.k==='sleep'?'，睡眠比较有保障':''}${best.k==='exercise'?'，运动习惯正在养成':''}${best.k==='water'?'，饮水基本达标':''}${best.k==='meals'?'，吃饭比较稳定':''}${best.k==='sit'?'，没有久坐过头':''}${best.k==='mood'?'，整体感觉不错':''}。`);
+    if(best.rate>=0.65) good.push(`${DIM_NAME[best.k]}：${texts[best.k]}。`);
     for(const r of ranked){ if(r.rate<0.6&&bad.length<2) bad.push(`${DIM_NAME[r.k]}：${texts[r.k]}。`); }
     if(!bad.length&&ranked.length>1){
       const worst=ranked[0];
