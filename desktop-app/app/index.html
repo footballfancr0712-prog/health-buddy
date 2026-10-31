@@ -68,6 +68,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
 .chip em{font-style:normal;font-size:11px;color:var(--t3)}
 .chip.on{border-color:var(--green);background:var(--green-bg);color:var(--green-d);font-weight:700}
 .chip .dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--green)}
+.chip .dot.bad{background:#f59e0b;box-shadow:0 0 0 2px #fef3c7}
 
 /* 三餐/情绪选择 */
 .meal-row,.sel-row{display:flex;gap:6px}
@@ -81,6 +82,15 @@ input[type=range]{width:100%;accent-color:var(--green)}
 .md-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:16px;font-family:inherit;background:#fff;outline:none}
 .md-row input:focus{border-color:var(--green)}
 .md-row input:disabled{background:#f6f7f6;color:#9ca3af;border-style:dashed}
+/* 数据校验提示 */
+.check-box{border-radius:12px;padding:10px 12px;margin:12px 0;font-size:13px;line-height:1.65}
+.check-box.err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
+.check-box.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.check-box>b{display:block;margin-bottom:6px;font-size:13px}
+.check-box .ck-item{display:flex;gap:6px;margin:6px 0;align-items:flex-start}
+.check-box .ck-dot{flex-shrink:0;font-weight:700;line-height:1.5}
+.check-box .ck-note{margin-top:8px;opacity:.85;font-size:12px}
+.check-box .ck-fix,.check-box .ck-go{border:1px solid currentColor;background:#fff;color:inherit;border-radius:7px;padding:3px 8px;font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap;margin-left:2px}
 
 /* 首页 */
 .home-top{display:flex;justify-content:space-between;align-items:center}
@@ -244,6 +254,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
         <div data-page-node-id="SI4G8eGe77cwDAcDQpNN4x" class="field"><label data-page-node-id="sqiPkGiYhmK4TZ5ljT5JS2"><!--pnid:iUO2ETwOv6XZuapJVcX0Qy-->今日身体状态自评</label><div data-page-node-id="z0c4wIuV5WI4WY7bBEzBzj" class="sel-row" id="body-btns"></div></div>
         <div data-page-node-id="7INsWHNkq4GNcDZoBUrZa9" class="field"><label data-page-node-id="u6zQ86W4bDXXuQll3gYZ30"><!--pnid:g9kxTlPE1BPo0TvsJMKKUh-->备注（可选）</label><input data-page-node-id="E1SmSh3vOsZuCCHSXWG482" id="f-note" maxlength="40" placeholder="如：考试周，没空运动" type="text"></div>
       </div>
+      <div class="check-box" id="form-check" style="display:none"></div>
       <div data-page-node-id="9IVj4Tz0H5cE17aaX3hgtI" class="btn-col">
         <button data-page-node-id="lXdZPawacNsTwUTqsuZXbq" class="btn primary big" id="btn-save"><!--pnid:VG8VvWIbMZNXEnIJ9F6BVW-->保存这一天</button>
         <button data-page-node-id="b7gDhP3MwffeXsabm33LJE" class="btn ghost" id="btn-clear-day"><!--pnid:1QxinelHYqFmMUf59NVtIY-->清空这天的记录</button>
@@ -287,7 +298,19 @@ const LS_KEY = 'healthBuddyRecords.v1';
 /* 表单草稿缓存：未提交表单的技术兜底，刷新后可恢复正在填写的内容 */
 const DRAFT_KEY = 'healthBuddyDraft.v1';
 function readDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)) || null; }catch(e){ return null; } }
-function saveDraft(){ markDirty(); try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({ k: currentKey, d: collectForm() })); }catch(e){} }
+function saveDraft(){
+  markDirty();
+  saveConfirmPending=false;
+  try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({ k: currentKey, d: collectForm() })); }catch(e){}
+  scheduleCheck();
+}
+var _ckTimer=null;
+function scheduleCheck(){
+  clearTimeout(_ckTimer);
+  _ckTimer=setTimeout(function(){
+    try{ if(typeof refreshFormCheck==='function') refreshFormCheck(); }catch(e){}
+  },400);
+}
 function markDirty(){
   if(formDirty) return;
   formDirty=true;
@@ -1420,6 +1443,16 @@ function renderHome(){
 }
 
 /* ---------- 记录页 ---------- */
+function gotoEdit(date){
+  currentKey=date;
+  switchTab('log');
+  renderDateChips();
+  loadForm(date);
+  var box=document.getElementById('form-check');
+  if(box&&box.style.display!=='none'){
+    try{ box.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+  }
+}
 function renderDateChips(){
   const win=weekWindow();
   const today=fmtDate(new Date());
@@ -1427,7 +1460,10 @@ function renderDateChips(){
   $('#date-chips').innerHTML=win.map(d=>{
     const dt=parseDate(d);
     const label=d===today?'今天':(d===yest?'昨天':'周'+'日一二三四五六'[dt.getDay()]);
-    const has=records[d]?'<i class="dot"></i>':'';
+    const okRec=records[d];
+    let badCls='';
+    if(okRec){ try{ if(validateRecord(okRec,d).items.length) badCls=' bad'; }catch(e){} }
+    const has=okRec?('<i class="dot'+badCls+'"></i>'):'';
     return `<button type="button" class="chip ${d===currentKey?'on':''}" data-d="${d}"><span>${label}</span><em>${dt.getMonth()+1}/${dt.getDate()}</em>${has}</button>`;
   }).join('');
   $$('#date-chips .chip').forEach(b=>{
@@ -1469,6 +1505,7 @@ function loadForm(key){
   renderToggles();
   clearDirty();
   renderDayReview();
+  refreshFormCheck();   /* 载入某天时先检查一遍，那天有问题当场就能看到 */
 }
 function syncMealNotesUI(){
   var ph=['如 包子豆浆','如 食堂两荤一素','如 泡面加蛋'];
@@ -1498,9 +1535,9 @@ function collectForm(){
   if(wake) rec.wakeTime=wake;
   let sh=parseFloat($('#f-sleep').value);
   if(isNaN(sh)&&bed&&wake){ const c=calcSleep(bed,wake); if(c!=null) sh=c; }
-  if(!isNaN(sh)) rec.sleepHours=Math.min(16,Math.max(0,sh));
+  if(!isNaN(sh)) rec.sleepHours=sh;   /* 不在这里截断，交给保存前校验去发现 */
   const ex=parseFloat($('#f-exercise').value);
-  if(!isNaN(ex)) rec.exerciseMin=Math.max(0,Math.min(600,Math.round(ex)));
+  if(!isNaN(ex)) rec.exerciseMin=Math.round(ex);
   const wv=parseInt($('#f-water').value,10);
   if(wv>0) rec.waterMl=wv;
   if(formState.meals.some(Boolean)) rec.meals=[...formState.meals];
@@ -1513,17 +1550,195 @@ function collectForm(){
   if(mn.some(Boolean)) rec.mealNotes=mn;
   if(formState.sugar>0) rec.sugarCups=formState.sugar;
   const sit=parseFloat($('#f-sit').value);
-  if(!isNaN(sit)) rec.sitHours=Math.max(0,Math.min(18,sit));
+  if(!isNaN(sit)) rec.sitHours=sit;
   if(formState.mood) rec.mood=formState.mood;
   if(formState.body) rec.bodyScore=formState.body;
   const note=$('#f-note').value.trim();
   if(note) rec.note=note;
   return rec;
 }
+/* ================= 数据校验：填错的数据比没填更糟 =================
+ * 分两级：
+ *   error — 物理上不可能（睡眠 23 小时、运动 999 分钟），必须改掉才能存
+ *   warn  — 可疑或自相矛盾（填的时长和入睡/起床对不上、写了吃什么却标了没吃），
+ *           允许保存，但要点第二次按钮确认，避免"手滑存进去"
+ * 原则：宁可多问一句，也不要让错数字去影响评分和建议。
+ */
+
+/* 各字段的可能范围；softMax 只是「值得怀疑」，不是禁止 */
+var RANGES={
+  sleepHours: { name:'睡眠时长', unit:'小时', min:0,   max:16,  softMin:4,   softMax:11 },
+  exerciseMin:{ name:'运动时长', unit:'分钟', min:0,   max:600, softMax:240 },
+  waterMl:    { name:'饮水量',   unit:'ml',  min:0,   max:6000, softMin:500, softMax:4000 },
+  sitHours:   { name:'久坐时长', unit:'小时', min:0,   max:24,  softMax:14 },
+  sugarCups:  { name:'含糖饮料', unit:'杯',   min:0,   max:10,  softMax:5 }
+};
+
+function validateRecord(rec, dateStr){
+  var errors=[], warns=[];
+  if(!rec) return { errors:errors, warns:warns };
+
+  /* 1) 超出可能范围 —— 多半是单位或位数填错 */
+  for(var k in RANGES){
+    var v=rec[k];
+    if(v==null) continue;
+    var R=RANGES[k];
+    if(v<R.min||v>R.max){
+      errors.push({ field:k, level:'error',
+        msg:R.name+'填了 '+v+' '+R.unit+'，超出可能范围（'+R.min+'~'+R.max+' '+R.unit+'）——是不是单位或位数填错了？' });
+    }
+  }
+
+  /* 2) 睡眠时长 与 入睡/起床 对不上 —— 最容易填错、也最影响评分的一项 */
+  if(rec.bedTime&&rec.wakeTime){
+    var c=calcSleep(rec.bedTime, rec.wakeTime);
+    if(c==null){
+      warns.push({ field:'bedTime', level:'warn',
+        msg:'入睡 '+rec.bedTime+'、起床 '+rec.wakeTime+' 算不出合理时长（不到 1 小时或超过 16 小时）——是不是把入睡和起床填反了？' });
+    }else if(rec.sleepHours!=null){
+      var diff=Math.abs(c-rec.sleepHours);
+      if(diff>0.35){
+        warns.push({ field:'sleepHours', level:'warn', fix:c.toFixed(1),
+          msg:'按入睡 '+rec.bedTime+'、起床 '+rec.wakeTime+' 算应该是 '+c.toFixed(1)+' 小时，你填的是 '+f1(rec.sleepHours)+' 小时，差 '+Math.round(diff*60)+' 分钟。'+
+              (rec.sleepHours<c?'如果你有意扣掉了入睡前的清醒时间，可以忽略。':'') });
+      }
+    }
+  }
+  if(!!rec.bedTime!==!!rec.wakeTime){
+    warns.push({ field:rec.bedTime?'wakeTime':'bedTime', level:'warn',
+      msg:'只填了'+(rec.bedTime?'入睡':'起床')+'时间，补上另一个才能自动算睡眠时长。' });
+  }
+
+  /* 3) 三餐：明细和「吃没吃」自相矛盾 */
+  if(rec.meals&&rec.mealNotes){
+    var nm=['早','午','晚'];
+    for(var i=0;i<3;i++){
+      if(rec.mealNotes[i]&&!rec.meals[i]){
+        warns.push({ field:'meal'+i, level:'warn',
+          msg:nm[i]+'餐写了「'+rec.mealNotes[i]+'」，但上面标的是没吃——这两个要一致，否则评分按没吃算。' });
+      }
+    }
+  }
+  /* 三餐全标没吃，但「主要食物」还选着，说明是忘了勾 */
+  if(rec.meals&&rec.meals.filter(Boolean).length===0&&rec.foodType){
+    warns.push({ field:'meals', level:'warn',
+      msg:'三餐都标了没吃，但「主要食物」选的是'+rec.foodType+'——如果那天其实吃了，把对应那顿勾上。' });
+  }
+
+  /* 4) 落在可疑区间：不一定是错，但值得看一眼 */
+  if(rec.sleepHours!=null&&rec.sleepHours>0&&rec.sleepHours<4){
+    warns.push({ field:'sleepHours', level:'warn',
+      msg:'睡眠只有 '+f1(rec.sleepHours)+' 小时，确认一下是不是少填了一位数（比如 7.5 填成了 1.5）。' });
+  }
+  if(rec.exerciseMin!=null&&rec.exerciseMin>RANGES.exerciseMin.softMax){
+    warns.push({ field:'exerciseMin', level:'warn',
+      msg:'运动 '+rec.exerciseMin+' 分钟超过 4 小时，确认没把步数或「走了多少米」填进来。' });
+  }
+  if(rec.waterMl!=null&&rec.waterMl>0&&rec.waterMl<RANGES.waterMl.softMin){
+    warns.push({ field:'waterMl', level:'warn',
+      msg:'饮水只有 '+rec.waterMl+' ml：如果只是没记全，建议留空——按低值算会白白扣掉饮水分。' });
+  }
+  if(rec.sitHours!=null&&rec.sitHours>RANGES.sitHours.softMax){
+    warns.push({ field:'sitHours', level:'warn',
+      msg:'久坐 '+f1(rec.sitHours)+' 小时，确认不是把分钟当小时填了。' });
+  }
+  if(rec.sugarCups!=null&&rec.sugarCups>RANGES.sugarCups.softMax){
+    warns.push({ field:'sugarCups', level:'warn',
+      msg:'含糖饮料 '+rec.sugarCups+' 杯，数量比较夸张，确认一下。' });
+  }
+
+  /* 去重：同一字段已有 error 就不再报 warn；
+     睡眠时长本身填错时，也不必再顺带说「是不是时间填反了」——根源是那个数 */
+  var errFields={};
+  errors.forEach(function(e){ errFields[e.field]=1; });
+  var seen={};
+  var out=errors.slice();
+  warns.forEach(function(w){
+    if(errFields[w.field]) return;
+    if(errFields.sleepHours&&(w.field==='bedTime'||w.field==='wakeTime')) return;
+    if(seen[w.field]) return;
+    seen[w.field]=1; out.push(w);
+  });
+  return { errors:errors, warns:warns, items:out };
+}
+
+/* ---------- 校验结果的展示与交互 ---------- */
+var saveConfirmPending=false;
+var FIELD_ID={ sleepHours:'f-sleep', exerciseMin:'f-exercise', waterMl:'f-water',
+  sitHours:'f-sit', bedTime:'f-bed', wakeTime:'f-wake', meals:'meal-0' };
+
+function scrollToField(field){
+  var id=FIELD_ID[field];
+  var el=id?document.getElementById(id):null;
+  if(!el) return;
+  try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+  try{ el.focus({preventScroll:true}); }catch(e){}
+}
+function applyFix(field, val){
+  var el=document.getElementById(FIELD_ID[field]||'');
+  if(el&&field==='sleepHours'){ el.value=val; }
+  saveConfirmPending=false;
+  refreshFormCheck();
+  saveDraft();
+}
+function refreshFormCheck(){
+  var box=document.getElementById('form-check');
+  if(!box) return null;
+  var rec=collectForm();
+  var v=validateRecord(rec, currentKey);
+  var items=v.items||[];
+  if(!items.length){
+    box.style.display='none'; box.innerHTML=''; box.className='check-box';
+    saveConfirmPending=false;
+    return v;
+  }
+  var isErr=v.errors.length>0;
+  var more=Math.max(0,items.length-4);
+  if(items.length>4) items=items.slice(0,4);
+  box.className='check-box '+(isErr?'err':'warn');
+  box.style.display='';
+  box.innerHTML='<b>'+(isErr?'有几处填得不太对，先改一下：':'保存前确认这几处：')+'</b>'+
+    items.map(function(it,i){
+      return '<div class="ck-item">'+
+        '<span class="ck-dot">'+(it.level==='error'?'✕':'!')+'</span>'+
+        '<span>'+esc(it.msg)+
+          (it.fix?' <button type="button" class="ck-fix" data-fix="'+it.field+'" data-val="'+it.fix+'">改成 '+it.fix+'</button>':'')+
+          ' <button type="button" class="ck-go" data-go="'+it.field+'">去修改</button>'+
+        '</span></div>';
+    }).join('')+
+    (more?'<div class="ck-note">还有 '+more+' 处没列出来，改完上面这些会继续提示。</div>':'')+
+    (isErr?'<div class="ck-note">这几项超出正常范围，改掉或清空后才能保存。</div>'
+          :'<div class="ck-note">如果确认没填错，再点一次「保存这一天」就会存进去。</div>');
+  /* 绑定按钮 */
+  Array.prototype.forEach.call(box.querySelectorAll('.ck-fix'),function(b){
+    b.onclick=function(){ applyFix(b.dataset.fix, b.dataset.val); };
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('.ck-go'),function(b){
+    b.onclick=function(){ scrollToField(b.dataset.go); };
+  });
+  return v;
+}
+
 function saveDay(){
   const rec=collectForm();
   const hasData=['bedTime','wakeTime','sleepHours','exerciseMin','waterMl','meals','foodType','sitHours','mood','bodyScore','note'].some(k=>rec[k]!=null);
   if(!hasData){ toast('先填一点数据再保存吧'); return; }
+  /* 填错的数据比没填更糟：先校验再看要不要存 */
+  var v=validateRecord(rec, currentKey);
+  if(v.errors.length){
+    refreshFormCheck();
+    toast('有 '+v.errors.length+' 处超出正常范围，先改一下');
+    return;
+  }
+  if(v.warns.length && !saveConfirmPending){
+    refreshFormCheck();
+    saveConfirmPending=true;
+    toast('请先确认上面 '+v.warns.length+' 处，再点一次保存');
+    return;
+  }
+  saveConfirmPending=false;
+  var ck=document.getElementById('form-check');
+  if(ck){ ck.style.display='none'; ck.innerHTML=''; }
   rec.updatedAt=Date.now();
   records[currentKey]=rec;
   saveRecords(records);
@@ -1590,6 +1805,32 @@ function renderTrend(){
 }
 
 /* ---------- 周报页 ---------- */
+/* 本周数据检查：把可疑的天集中列出来，点一下就能去改 */
+function dataCheckHTML(winRecs){
+  var bad=[];
+  winRecs.forEach(function(x){
+    if(!x.rec) return;
+    var v=validateRecord(x.rec, x.date);
+    if(v.items.length) bad.push({ date:x.date, items:v.items, err:v.errors.length>0 });
+  });
+  if(!bad.length) return '';
+  var errDays=bad.filter(function(b){ return b.err; }).length;
+  return '<div class="card">'+
+    '<div class="card-title">🔎 数据检查 <span class="unit">'+bad.length+' 天需要核对</span></div>'+
+    bad.slice(0,5).map(function(b){
+      var dt=parseDate(b.date);
+      var first=b.items[0];
+      return '<div class="tip-item"><span class="ti" style="color:'+(b.err?'#dc2626':'#f59e0b')+';font-weight:700">'+(b.err?'✕':'!')+'</span>'+
+        '<span><b>'+(dt.getMonth()+1)+'/'+dt.getDate()+'</b> '+esc(first.msg)+
+        ' <button type="button" class="ck-go" onclick="gotoEdit(\''+b.date+'\')">去改</button>'+
+        '</span></div>';
+    }).join('')+
+    '<div class="hint" style="margin-top:8px">'+
+      (errDays?('有 '+errDays+' 天存在超出范围的值，那几天的评分会算错。'):'数值都在范围内，只是有几处前后对不上。')+
+      '这些天的评分和建议照常显示，但核对完更可信。</div>'+
+  '</div>';
+}
+
 function renderReport(){
   const win=weekWindow();
   const winRecs=win.map(d=>({date:d, rec:records[d]||null}));
@@ -1658,6 +1899,7 @@ function renderReport(){
       ${tips.map(t=>`<div class="tip-item"><span class="ti">${TIP_ICON[t.type]||'💡'}</span><span>${t.text}</span></div>`).join('')}
       <div class="hint" style="margin-top:8px">建议由规则基于你填写的数据生成，仅涉及作息、运动、饮食等生活习惯，不构成医疗建议</div>
     </div>
+    ${dataCheckHTML(winRecs)}
     ${noteBlockHTML(winRecs)}
     <div class="disclaimer">本工具仅做日常作息与生活习惯的记录整理，所有评分与建议只基于你填写的数据，不构成任何医疗诊断或治疗建议。</div>
   `;
@@ -1792,8 +2034,8 @@ function csvRowToRecord(headIdx, row){
   var wake=csvTime(g('起床时间')); if(wake) rec.wakeTime=wake;
   var sh=csvToNum(g('睡眠时长'));
   if(sh==null && bed && wake){ var c=calcSleep(bed,wake); if(c!=null) sh=c; }
-  if(sh!=null) rec.sleepHours=Math.round(Math.min(16,Math.max(0,sh))*10)/10;
-  var ex=csvToNum(g('运动时长')); if(ex!=null) rec.exerciseMin=Math.max(0,Math.min(600,Math.round(ex)));
+  if(sh!=null) rec.sleepHours=Math.round(sh*10)/10;   /* 不截断：超出范围由校验标出来，别偷偷改数 */
+  var ex=csvToNum(g('运动时长')); if(ex!=null) rec.exerciseMin=Math.round(ex);
   var wt=csvToNum(g('饮水量')); if(wt!=null) rec.waterMl=Math.max(0,Math.min(5000,Math.round(wt)));
   var b=csvToBool(g('早餐')), l=csvToBool(g('午餐')), din=csvToBool(g('晚餐'));
   /* 至少有一顿「吃了」才算记了三餐；三列都是否/空值时视为这天没记三餐，不写成 0/3 */
@@ -1802,7 +2044,7 @@ function csvRowToRecord(headIdx, row){
   var mn=[g('早餐吃了什么')||'', g('午餐吃了什么')||'', g('晚餐吃了什么')||''].map(function(x){ return String(x).slice(0,20); });
   if(mn.some(Boolean)) rec.mealNotes=mn;
   var sug=csvToNum(g('含糖饮料'));
-  if(sug!=null) rec.sugarCups=Math.max(0,Math.min(9,Math.round(sug)));
+  if(sug!=null) rec.sugarCups=Math.round(sug);
   var food=csvFood(g('主要食物')); if(food) rec.foodType=food;
   var sit=csvToNum(g('久坐时长')); if(sit!=null) rec.sitHours=Math.max(0,Math.min(24,sit));
   var mood=csvToNum(g('精神状态')); if(mood!=null) rec.mood=Math.min(5,Math.max(1,Math.round(mood)));
@@ -1837,7 +2079,18 @@ function applyImport(recMap, badCount, silent, allFalseMeals){
   clearDraft();
   if(!deskBooting) deskSyncAll(dates);
   refreshAll();
+  /* 导入后过一遍校验：有问题就说清楚，别让错数据悄悄进去 */
+  var issueDays=0, errDays=0;
+  dates.forEach(function(d){
+    try{
+      var v=validateRecord(records[d], d);
+      if(v.items.length) issueDays++;
+      if(v.errors.length) errDays++;
+    }catch(e){}
+  });
   var head='已导入 '+dates.length+' 天（近 7 天 '+inWin+' 天'+(badCount?('，跳过 '+badCount+' 行无效日期'):'')+'）';
+  if(issueDays) head+='；'+issueDays+' 天数据需要核对'+(errDays?('（'+errDays+' 天有超出范围的值，那几天评分会算错）'):'')+'，记录页这几天会有橙色圆点，周报里也能一键去改';
+  else head+='，数值检查通过';
   if(allFalseMeals) head+='；其中 '+allFalseMeals+' 天三餐列都是 FALSE/否/0，已按「没记三餐」处理（真要记成没吃，请在记录页勾选后保存）';
   if(onlineMode && db){
     setCsvStatus(head+'，正在同步到云端…');
