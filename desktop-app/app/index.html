@@ -269,7 +269,18 @@ const LS_KEY = 'healthBuddyRecords.v1';
 /* 表单草稿缓存：未提交表单的技术兜底，刷新后可恢复正在填写的内容 */
 const DRAFT_KEY = 'healthBuddyDraft.v1';
 function readDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)) || null; }catch(e){ return null; } }
-function saveDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({ k: currentKey, d: collectForm() })); }catch(e){} }
+function saveDraft(){ markDirty(); try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({ k: currentKey, d: collectForm() })); }catch(e){} }
+function markDirty(){
+  if(formDirty) return;
+  formDirty=true;
+  var b=document.getElementById('btn-save');
+  if(b){ b.textContent='● 有改动未保存 — 点这里保存'; b.style.background='#f59e0b'; }
+}
+function clearDirty(){
+  formDirty=false;
+  var b=document.getElementById('btn-save');
+  if(b){ b.textContent='保存这一天'; b.style.background=''; }
+}
 function clearDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
 /* ============ 在线数据层（资料库 SDK，实现跨设备同步） ============
  * 优先使用 window.__SMART_PAGE__.database（资料库注入）；不存在则降级 localStorage。
@@ -448,6 +459,7 @@ function reloadAllQuiet(){
 }
 let currentKey = fmtDate(new Date());
 let formState = { meals:[false,false,false], foodType:null, mood:0, body:0 };
+let formDirty = false;   /* 表单有改动但还没保存 */
 
 /* 统一刷新入口：更新顶栏并重渲染当前激活页（双向同步收到变更时调用） */
 function refreshAll(){
@@ -914,7 +926,12 @@ function renderDateChips(){
     return `<button type="button" class="chip ${d===currentKey?'on':''}" data-d="${d}"><span>${label}</span><em>${dt.getMonth()+1}/${dt.getDate()}</em>${has}</button>`;
   }).join('');
   $$('#date-chips .chip').forEach(b=>{
-    b.onclick=()=>{ currentKey=b.dataset.d; renderDateChips(); loadForm(currentKey); };
+    b.onclick=()=>{
+      if(formDirty && b.dataset.d!==currentKey){
+        if(!confirm('「'+currentKey+'」的改动还没保存，确定换一天吗？')) return;
+      }
+      currentKey=b.dataset.d; renderDateChips(); loadForm(currentKey);
+    };
   });
 }
 function loadForm(key){
@@ -941,6 +958,7 @@ function loadForm(key){
   formState.mood=r.mood||0;
   formState.body=r.bodyScore||0;
   renderToggles();
+  clearDirty();
 }
 function renderToggles(){
   [0,1,2].forEach(i=>$('#meal-'+i).classList.toggle('on',!!formState.meals[i]));
@@ -981,6 +999,7 @@ function saveDay(){
   saveRecords(records);
   deskSyncDay(currentKey);
   clearDraft();
+  clearDirty();
   if(onlineMode){
     onlineDirty=true;
     syncDayOnline(currentKey, rec).then(function(ok){
@@ -989,7 +1008,7 @@ function saveDay(){
     });
     toast('保存中…');
   } else {
-    toast('已保存 ✓');
+    toast(DESK ? '已保存 ✓ 已写入文档' : '已保存 ✓');
   }
   updateTopbar();
   setTimeout(()=>switchTab('home'),550);
@@ -1425,7 +1444,10 @@ function deskSyncDay(d){
   if(!DESK||!DESK.upsertDay) return;
   try{
     DESK.upsertDay({ date:d, cells:deskCells(d) }).then(function(res){
-      if(res&&res.error) setDeskState('⚠️ 文档写入失败：'+res.error+'（是不是在 Excel 里开着？）');
+      if(res&&res.error){
+        setDeskState('⚠️ 文档写入失败：'+res.error+'（是不是在 Excel 里开着？）');
+        toast('⚠️ 已存到软件里，但没写进文档：'+res.error);
+      }
     }).catch(function(){});
   }catch(e){}
 }
@@ -1475,6 +1497,10 @@ function updateTopbar(){
   $('#topbar-count').textContent=`${n}/7 天`;
 }
 function switchTab(name){
+  if(name!=='log' && formDirty && $('#page-log') && $('#page-log').classList.contains('active')){
+    if(!confirm('「'+currentKey+'」的改动还没保存，切走就丢了。\n\n点「取消」回去按保存，点「确定」放弃这次改动。')) return;
+    clearDirty();
+  }
   $$('.page').forEach(p=>p.classList.remove('active'));
   $('#page-'+name).classList.add('active');
   $$('.tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
