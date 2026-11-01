@@ -34,7 +34,7 @@ main      ← 页面 + 电脑版（Electron），日常都在这里改
 | `android/app/src/main/res` | 图标（`make-icons.py` 生成，5 档尺寸 + 自适应前景） |
 | `android/app/build.gradle` | 版本号、签名配置、SDK 版本 |
 | `android/make-icons.py` | 图标生成脚本，心形算法与电脑版一致 |
-| `healthbuddy.jks` | 签名密钥（见下方警告） |
+| `android/keystore.properties` | 本机签名配置（**不入库**，见下方说明） |
 | `www/` | 构建时生成，已被 gitignore |
 
 `android/` 目录内自带 Capacitor 的 `.gitignore`，构建产物、Gradle 缓存、SDK 本地路径都不会入库。
@@ -53,12 +53,24 @@ main      ← 页面 + 电脑版（Electron），日常都在这里改
    `android/gradle.properties` 里已加 `systemProp.java.net.preferIPv4Stack=true`，别删。
 2. **Maven 镜像**：`maven.aliyun.com`、`repo.huaweicloud.com` 在本网络环境不可达，用官方源 `google()` + `mavenCentral()`，直连反而正常。
 
-## ⚠️ 签名密钥
+## 签名密钥（不在仓库里）
 
-`healthbuddy.jks` 已纳入本分支版本管理（密码在 `android/app/build.gradle`），这样不会丢。
+密钥和密码都**不进版本库**，所以这个分支可以安全地推到远程仓库。
 
-- **丢了就再也无法覆盖安装**，只能卸载重装、数据清空
-- 如果哪天要把仓库推到 GitHub 等公开远程，**必须先把它移出版本管理**，否则任何人都能用它签一个假冒你的包
+| 文件 | 在哪 | 是否入库 |
+|---|---|---|
+| `mobile-app/healthbuddy.jks` | 本机 | 否（`.gitignore` 已排除） |
+| `mobile-app/android/keystore.properties` | 本机 | 否 |
+| `mobile-app/android/keystore.properties.example` | 仓库 | 是（只有字段名，没有真实值） |
+
+`app/build.gradle` 会读 `android/keystore.properties` 取签名信息；文件不存在时仍能构建 debug 包，release 包不签名（终端会打印警告）。
+
+**重新拉仓库后要做的**：把 `keystore.properties.example` 复制成 `keystore.properties`，填入真实密码；并把 `healthbuddy.jks` 放回 `mobile-app/` 下。
+
+**这个密钥必须自己另外备份**（网盘、手机、密码管理器都行）。它是唯一能让手机`覆盖升级`的东西：
+
+- 丢了 → 只能卸载重装，手机里的记录清空
+- 泄漏 → 别人能签一个同包名的假冒 APK，装进去就能读手机里的记录
 
 ## 已知限制
 
