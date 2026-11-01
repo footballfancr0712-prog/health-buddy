@@ -123,10 +123,12 @@ say "  版本 $VER"
 
 export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
 # 产物放系统临时目录：仓库里不留需要清理的目录（本机 rm -rf 会被安全机制拦截）
-OUTDIR="${TEMP:-/tmp}/hb-rollback-$(date +%s)"
+# 统一成 C:/... 形式：混用 \ 和 / 会被本机的删除拦截器判为非法路径
+TMPBASE=$(printf '%s' "${TEMP:-/tmp}" | tr '\\' '/')
+OUTDIR="$TMPBASE/hb-rollback-$(date +%s)"
 mkdir -p "$OUTDIR"
 ./desktop-app/node_modules/.bin/electron-packager ./desktop-app HealthBuddy \
-  --platform=win32 --arch=x64 --out="$OUTDIR" --overwrite \
+  --platform=win32 --arch=x64 --out="$OUTDIR" \
   --icon=desktop-app/build/icon.ico --app-version="$VER" --prune=true \
   --ignore="^/dist" >/dev/null 2>&1
 
