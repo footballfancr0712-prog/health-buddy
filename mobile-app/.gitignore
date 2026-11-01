@@ -12,3 +12,8 @@ android/icon-preview.png
 
 # 说明：android/ 目录下另有一份 Capacitor 自带的 .gitignore，
 # 已排除 build/、.gradle/、local.properties、app/src/main/assets/public 等生成物。
+
+# 签名密钥与密码配置——绝不入库
+*.jks
+*.keystore
+android/keystore.properties

@@ -16,19 +16,31 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    signingConfigs {
-        release {
-            storeFile file('../../healthbuddy.jks')
-            storePassword '[REDACTED]'
-            keyAlias 'healthbuddy'
-            keyPassword '[REDACTED]'
+    // 签名信息从 keystore.properties 读取：该文件与 .jks 都不入库，避免密钥泄漏到远程仓库
+    // 缺少该文件时仍能构建 debug 包，release 包会因不签名而无法安装（见终端警告）
+    def keystorePropsFile = rootProject.file('keystore.properties')
+    def hasKeystore = keystorePropsFile.exists()
+    if (hasKeystore) {
+        def keystoreProps = new Properties()
+        keystorePropsFile.withInputStream { keystoreProps.load(it) }
+        signingConfigs {
+            release {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
         }
+    } else {
+        logger.warn('[健康Buddy] 未找到 android/keystore.properties，release 包将不签名')
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            if (hasKeystore) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
