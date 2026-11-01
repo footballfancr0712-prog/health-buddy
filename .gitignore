@@ -20,3 +20,10 @@ desktop.ini
 # 截图脚本与产物
 desktop-app/capture.js
 desktop-app/shots/
+
+# Android 工具链与构建产物（体积大，不入库）
+tools/
+mobile-app/
+
+# 安卓安装包（构建产物，可重新生成）
+*.apk
