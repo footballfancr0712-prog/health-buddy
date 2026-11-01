@@ -56,8 +56,14 @@ public class MainActivity extends BridgeActivity {
         if (web == null) {
             return;
         }
-        final String js =
-                "document.documentElement.style.setProperty('--sat','" + safeTopCss + "px')";
+        final String js = "(function(){"
+                + "document.documentElement.style.setProperty('--sat','" + safeTopCss + "px');"
+                + "var d=document;"
+                + "if(d.getElementById('hb-native-css')){return;}"
+                + "var s=d.createElement('style');s.id='hb-native-css';"
+                + "s.textContent='html,body{scrollbar-width:none}"
+                + "html::-webkit-scrollbar,body::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}';"
+                + "d.head.appendChild(s);})()";
         web.post(() -> web.evaluateJavascript(js, null));
         // 首屏此时可能还没加载完，稍后再补一次，避免样式被新文档冲掉
         web.postDelayed(() -> web.evaluateJavascript(js, null), 900);
