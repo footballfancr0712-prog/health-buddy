@@ -122,13 +122,15 @@ VER=$(node -e "console.log(require('./desktop-app/package.json').version)")
 say "  版本 $VER"
 
 export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
-rm -rf dist-rollback
+# 产物放系统临时目录：仓库里不留需要清理的目录（本机 rm -rf 会被安全机制拦截）
+OUTDIR="${TEMP:-/tmp}/hb-rollback-$(date +%s)"
+mkdir -p "$OUTDIR"
 ./desktop-app/node_modules/.bin/electron-packager ./desktop-app HealthBuddy \
-  --platform=win32 --arch=x64 --out=dist-rollback --overwrite \
+  --platform=win32 --arch=x64 --out="$OUTDIR" --overwrite \
   --icon=desktop-app/build/icon.ico --app-version="$VER" --prune=true \
   --ignore="^/dist" >/dev/null 2>&1
 
-SRC="$PWD/dist-rollback/HealthBuddy-win32-x64"
+SRC="$OUTDIR/HealthBuddy-win32-x64"
 [ -f "$SRC/HealthBuddy.exe" ] || die "构建失败，产物不存在"
 
 # 精简语言包
@@ -150,7 +152,6 @@ TARGET_DIR="${LOCALAPPDATA:-$HOME/AppData/Local}/Programs/HealthBuddy"
 TARGET_DIR=$(printf '%s' "$TARGET_DIR" | tr '\\' '/')
 mkdir -p "$TARGET_DIR"
 cp -rf "$SRC/." "$TARGET_DIR/"
-rm -rf dist-rollback
 
 [ -f "$TARGET_DIR/HealthBuddy.exe" ] || die "安装后找不到 exe，请检查 $TARGET_DIR"
 
