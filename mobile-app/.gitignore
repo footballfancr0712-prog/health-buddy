@@ -1,0 +1,14 @@
+# 依赖
+node_modules/
+
+# www/ 是构建时从主分支页面复制出来的，不入库（避免和主分支重复、产生冲突）
+www/
+
+# 构建日志
+*.log
+
+# 图标预览图（make-icons.py 的副产物）
+android/icon-preview.png
+
+# 说明：android/ 目录下另有一份 Capacitor 自带的 .gitignore，
+# 已排除 build/、.gradle/、local.properties、app/src/main/assets/public 等生成物。

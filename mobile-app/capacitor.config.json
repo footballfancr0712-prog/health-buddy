@@ -1,0 +1,9 @@
+{
+  "appId": "com.personal.healthbuddy",
+  "appName": "健康Buddy",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true
+  }
+}
