@@ -1,6 +1,6 @@
 {
   "name": "health-buddy",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "健康 Buddy · 7天身体管理工作台（桌面版）",
   "main": "main.js",
   "scripts": {

@@ -45,6 +45,8 @@ main{padding:12px 12px 8px}
   -webkit-backdrop-filter:blur(14px) saturate(160%);
   backdrop-filter:blur(14px) saturate(160%);
   color:#fff;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;
+  /* 状态栏/刘海留白：env() 给浏览器，--sat 给安卓 App 注入（见 MainActivity） */
+  padding-top:calc(13px + max(env(safe-area-inset-top,0px),var(--sat,0px)));
   border-radius:0 0 18px 18px;
   box-shadow:0 6px 20px rgba(16,185,129,.26), inset 0 1px 0 rgba(255,255,255,.25);
 }
