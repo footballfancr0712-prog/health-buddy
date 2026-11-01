@@ -25,6 +25,13 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // 关掉 WebView 自带的系统滚动条：它会和页面里那条重叠，而且滚动时位置不跟随
+        WebView web = bridge != null ? bridge.getWebView() : null;
+        if (web != null) {
+            web.setVerticalScrollBarEnabled(false);
+            web.setHorizontalScrollBarEnabled(false);
+        }
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             float density = getResources().getDisplayMetrics().density;
