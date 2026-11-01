@@ -4,6 +4,23 @@
 <!-- 本地导出版：已移除平台注入脚本，数据保存在本机浏览器 localStorage；如需云端同步请使用资料库在线页面 -->
 <meta data-page-node-id="uFwEza1RpQiemqInxcf3tZ" charset="UTF-8">
 <meta data-page-node-id="TyB4BYVXtcLGu1dzsJZmRS" content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
+<!-- 安卓 App 标记：CSS 一上来就按"App 内"排版，不用等原生注入，避免样式晚到一步 -->
+<script>
+(function(){
+  function isApp(){
+    try{
+      if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return true;
+      /* Capacitor 安卓默认从 https://localhost 加载页面 */
+      if(/^https?:\/\/localhost(:\d+)?\//.test(location.href) && /Android/i.test(navigator.userAgent)) return true;
+    }catch(e){}
+    return false;
+  }
+  function mark(){ try{ if(isApp()) document.documentElement.classList.add('hb-native'); }catch(e){} }
+  mark();
+  /* 原生桥可能比这段脚本晚到，DOM 解析完再补一次 */
+  document.addEventListener('DOMContentLoaded',mark);
+})();
+</script>
 <meta data-page-node-id="rAK5kxmXoDWszG5V9kcn1A" content="#10b981" name="theme-color">
 <title data-page-node-id="OWpssy0eOyNc8qDdoAECTW" data-pnid-children="t0wMlXot0YrApQtOZYLG7Z">健康 Buddy · 7天身体管理工作台</title>
 <!--pnid:E1WZC56pQ7z3rLYp7uVN18--><!-- 本工作台通过 WorkBuddy「资料库」skill 搭建、存储和部署：页面绑定资料库数据表「7天身体管理记录」，数据在线存储、双向同步 -->
@@ -37,6 +54,25 @@ body{
 }
 #app{max-width:520px;margin:0 auto;min-height:100vh;background:transparent;position:relative;padding-bottom:calc(86px + env(safe-area-inset-bottom))}
 main{padding:12px 12px 8px}
+
+/* ===== 安卓 App（WebView）隐藏滚动条 =====
+   两层一起断掉：
+   1) 根文档不再滚动（html/body overflow:hidden），WebView 原生滚动条没有可滚区间，
+      所以那条"不会动、贯穿全高"的系统滚动条根本画不出来；
+   2) 真正的滚动交给 #app 自己，再用 scrollbar-width / ::-webkit-scrollbar 把它的条藏掉。
+   只对 html.hb-native 生效（该 class 由页面头部脚本在 App 内加上），电脑版不受影响。 */
+html.hb-native,html.hb-native body{height:100%;overflow:hidden}
+@media (max-width:899px){
+  html.hb-native #app{
+    height:100%;min-height:100%;
+    overflow-y:auto;overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    scrollbar-width:none;
+  }
+  html.hb-native #app::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+  html.hb-native .chips-scroll{overscroll-behavior-x:contain}
+}
 
 /* 顶栏 */
 .topbar{
@@ -2586,7 +2622,9 @@ function switchTab(name){
   if(name==='log'){ renderDateChips(); loadForm(currentKey); }
   if(name==='trend') renderTrend();
   if(name==='report') renderReport();
+  /* 切页回到顶部：App 内滚动容器是 #app，桌面/浏览器是 window，两个都归零 */
   window.scrollTo(0,0);
+  var appEl=$('#app'); if(appEl) appEl.scrollTop=0;
 }
 
 function init(){
