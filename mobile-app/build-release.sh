@@ -27,8 +27,13 @@ if [ ! -d node_modules ]; then
   npm i --registry=https://registry.npmmirror.com --no-audit --no-fund
 fi
 
-npx cap sync android
-echo "✓ cap sync 完成"
+# cap sync 会去删 capacitor-cordova-android-plugins，本机的安全删除拦截大量文件时会失败；
+# 只是改页面时用 copy 就够（插件没变的话 update 那步本来也没有实际改动）
+if ! npx cap sync android; then
+  echo "! cap sync 失败（多半是安全删除拦截），退回 cap copy"
+  npx cap copy android
+fi
+echo "✓ cap 同步完成"
 
 # 3. 工具链（默认用仓库内 tools/，已装则可被环境变量覆盖）
 TOOLS="$REPO/tools"
