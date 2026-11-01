@@ -375,6 +375,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
           <button data-page-node-id="0M0wFmPkdIDXv4sFhn0ltr" class="btn ghost" id="btn-csv-export" type="button"><!--pnid:J3o7Na802s6LvIaIdQB7GD-->导出全部记录</button>
         </div>
         <button data-page-node-id="QZPvnftYTKyYuUA5KcL8Dm" class="btn ghost" id="btn-csv-template" type="button" style="margin-top:8px"><!--pnid:VwddtBAZFWqegPbaDOu4DB-->下载 CSV 模板</button>
+        <div class="hint" id="csv-path" style="margin-top:6px;color:#0f766e;word-break:break-all;display:none"></div>
         <input data-page-node-id="PtHPFOhBoOozuCmhxAjVxV" accept=".csv,text/csv" id="csv-file" type="file" style="display:none">
         <div data-page-node-id="puWgCv5VqWI4QOA6oTrhRC" class="hint" id="csv-status"></div>
         <div class="hint" id="desk-status" style="margin-top:2px;color:#059669"></div>
@@ -2387,8 +2388,7 @@ function exportRecordsCSV(){
       r.note||''
     ].map(csvCell).join(','));
   });
-  downloadTextCSV('健康Buddy-记录-'+fmtDate(new Date())+'.csv', '\ufeff'+lines.join('\r\n'));
-  toast('已导出 '+dates.length+' 天记录');
+  downloadTextCSV('健康Buddy-记录-'+fmtDate(new Date())+'.csv', '\ufeff'+lines.join('\r\n'), '已导出 '+dates.length+' 天记录');
 }
 function downloadTemplateCSV(){
   var body=[
@@ -2396,10 +2396,60 @@ function downloadTemplateCSV(){
     '2026-10-31,00:30,07:20,6.8,30,30,1500,是,是,否,包子豆浆,食堂两荤一素,,1,食堂为主,8,3,3,示例行·可整行删除',
     '2026-10-30,23:50,07:30,7.6,0,45,1800,是,是,是,鸡蛋燕麦,外卖盖饭,自己煮面,0,自己做饭,6.5,4,4,'
   ].join('\r\n');
-  downloadTextCSV('健康Buddy-CSV模板.csv', '\ufeff'+body+'\r\n');
-  toast('模板已下载');
+  downloadTextCSV('健康Buddy-CSV模板.csv', '\ufeff'+body+'\r\n', '模板已下载');
 }
-function downloadTextCSV(name, text){
+/* ---------- 下载 CSV ----------
+ * 浏览器/桌面：用 <a download> 触发下载
+ * 安卓 App：WebView 不支持下载，改用 Capacitor 的 Filesystem 写进手机，并把真实路径显示出来
+ */
+var NATIVE_FS = (typeof window!=='undefined' && window.Capacitor && window.Capacitor.isNativePlatform
+  && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins) ? window.Capacitor.Plugins : null;
+
+function nativeSaveCSV(name, text){
+  var FS = NATIVE_FS && NATIVE_FS.Filesystem;
+  if(!FS) return Promise.resolve(null);
+  /* 先试公共「文档」目录（用户好找），不行再退到应用专属目录（一定有权限） */
+  var tries = [
+    { directory:'DOCUMENTS', path:'健康Buddy/'+name },
+    { directory:'EXTERNAL',  path:'健康Buddy/'+name }
+  ];
+  function attempt(i){
+    if(i>=tries.length) return Promise.resolve(null);
+    return FS.writeFile({
+      path: tries[i].path, data: text, directory: tries[i].directory, encoding: 'utf8', recursive: true
+    }).then(function(res){
+      return { uri: res.uri, dir: tries[i].directory, path: tries[i].path };
+    }).catch(function(){ return attempt(i+1); });
+  }
+  return attempt(0);
+}
+
+function showCsvPath(r){
+  var el = document.getElementById('csv-path');
+  if(!el) return;
+  var shown = String(r.uri || '');
+  if(shown.indexOf('file://') === 0) shown = shown.slice(7);
+  try{ shown = decodeURIComponent(shown); }catch(e){}
+  el.style.display = '';
+  el.innerHTML = '已保存到手机：<br><span style="user-select:text;-webkit-user-select:text">' + esc(shown) + '</span>'
+    + ((NATIVE_FS && NATIVE_FS.Share) ? ' <button type="button" id="btn-csv-share" style="border:1px solid #0f766e;background:#fff;color:#0f766e;border-radius:7px;padding:2px 8px;font-size:12px;font-family:inherit">分享</button>' : '');
+  var b = document.getElementById('btn-csv-share');
+  if(b){
+    b.onclick = function(){
+      NATIVE_FS.Share.share({ title: name || '健康 Buddy CSV', url: r.uri }).catch(function(){});
+    };
+  }
+}
+
+function downloadTextCSV(name, text, okMsg){
+  if(NATIVE_FS && NATIVE_FS.Filesystem){
+    window._csvName = name;
+    nativeSaveCSV(name, text).then(function(r){
+      if(r){ showCsvPath(r); toast(okMsg || '已保存到手机'); }
+      else { toast('保存失败，请截图这个提示'); }
+    });
+    return;
+  }
   var blob=new Blob([text],{type:'text/csv;charset=utf-8'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -2407,6 +2457,7 @@ function downloadTextCSV(name, text){
   document.body.appendChild(a);
   a.click();
   setTimeout(function(){ URL.revokeObjectURL(a.href); if(a.parentNode) a.parentNode.removeChild(a); },300);
+  if(okMsg) toast(okMsg);
 }
 
 /* 编程式接口：window.healthBuddy.importCSV(csv文本) / .exportCSV() / .getRecords() */
