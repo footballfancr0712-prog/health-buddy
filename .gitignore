@@ -33,3 +33,6 @@ backups/
 
 # 临时测试目录
 tmp_*/
+
+# 回退构建产物
+dist-rollback/

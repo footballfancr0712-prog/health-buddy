@@ -6,7 +6,16 @@
 #   ./rollback.sh v1.1.9 --build-only  只构建，不替换已装版本
 #   ./rollback.sh --restore          装回最新版（main 分支）
 set -euo pipefail
-cd "$(dirname "$0")"
+
+# 本脚本会被 git checkout 删掉（旧版本里没有这个文件），
+# 而 bash 边读边执行，文件消失会中断。所以先复制到临时目录再跑。
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+if [ "${HB_RB_TMP:-}" != "1" ]; then
+  TMPD=$(mktemp -d 2>/dev/null || mktemp -d -t hb)
+  cp "$ROOT/rollback.sh" "$TMPD/rollback.sh" 2>/dev/null || cp "$0" "$TMPD/rollback.sh"
+  HB_RB_TMP=1 HB_RB_ROOT="$ROOT" exec bash "$TMPD/rollback.sh" "$@"
+fi
+cd "${HB_RB_ROOT:-$(pwd)}"
 
 PROG="$HOME/AppData/Local/Programs/HealthBuddy"
 CSV_WIN="$USERPROFILE/Desktop/健康Buddy-我的记录.csv"
