@@ -1,4 +1,10 @@
-/* CSV 文档读写：纯 Node 实现，不依赖 Electron，方便单独测试 */
+/* CSV 文档读写：纯 Node 实现，不依赖 Electron，方便单独测试
+ *
+ * 关键设计：**按列名对齐，不按列位置**
+ *   - 读取时以文件自己的表头为准，不认识的多余列原样保留
+ *   - 文件缺少的列追加到末尾，旧行空着，不会挤位
+ * 这样任何一版软件写过的文件，另一版读写都不会把数据错位或丢掉。
+ */
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -14,6 +20,8 @@ const CSV_HEAD = [
   '早餐吃了什么', '午餐吃了什么', '晚餐吃了什么', '含糖饮料(杯)',
   '主要食物(食堂/外卖/自己做/快餐/均衡)', '久坐时长(小时)', '精神状态(1-5)', '身体自评(1-5)', '备注'
 ];
+
+const DATE_COL = '日期';
 
 function readTextSafe(file) {
   const buf = fs.readFileSync(file);
@@ -72,6 +80,44 @@ function friendlyError(e) {
   return e.code || e.message || '未知错误';
 }
 
+/* ---------- 表头处理 ---------- */
+
+/* 读文件 → { header, rows }。第一行不像表头时按标准表头处理 */
+function readState() {
+  if (!fs.existsSync(CSV_PATH)) return { header: CSV_HEAD.slice(), rows: [] };
+  const rows = parseCSV(readTextSafe(CSV_PATH));
+  if (!rows.length) return { header: CSV_HEAD.slice(), rows: [] };
+
+  let header = rows[0].map(c => String(c == null ? '' : c).trim());
+  const looksLikeHeader = header.some(h => CSV_HEAD.indexOf(h) >= 0) || normDate(header[0]) === null;
+  if (!looksLikeHeader) return { header: CSV_HEAD.slice(), rows: rows };
+
+  /* 补一列「日期」：极早期文件可能没有这一列名 */
+  if (header.indexOf(DATE_COL) < 0) header = [DATE_COL].concat(header);
+  return { header, rows: rows.slice(1) };
+}
+
+/* 输出表头 = 文件原有列 + 本版本新增列（追加到末尾，不打乱已有位置） */
+function targetHeaderOf(fileHeader) {
+  const out = fileHeader.slice();
+  CSV_HEAD.forEach(h => { if (out.indexOf(h) < 0) out.push(h); });
+  return out;
+}
+
+function indexMapOf(header) {
+  const m = {};
+  header.forEach((h, i) => { if (!(h in m)) m[h] = i; });
+  return m;
+}
+
+/* 把一行规整到指定列数，日期统一格式 */
+function normalizeRow(r, width, dateIdx) {
+  const a = r.slice(0, width);
+  while (a.length < width) a.push('');
+  if (dateIdx != null) a[dateIdx] = normDate(a[dateIdx]) || a[dateIdx] || '';
+  return a;
+}
+
 function read() {
   try {
     if (!fs.existsSync(CSV_PATH)) return { ok: true, text: '', path: CSV_PATH, exists: false };
@@ -86,21 +132,32 @@ function upsert(payload) {
     const date = normDate(payload && payload.date);
     const cells = (payload && payload.cells) || [];
     if (!date) return { error: '日期不合法' };
-    let rows = [];
-    if (fs.existsSync(CSV_PATH)) rows = parseCSV(readTextSafe(CSV_PATH));
-    if (!rows.length) rows = [CSV_HEAD.slice()];
-    rows[0] = CSV_HEAD.slice();
-    const row = cells.slice(0, CSV_HEAD.length);
-    while (row.length < CSV_HEAD.length) row.push('');
-    row[0] = date;
-    const idx = rows.findIndex((r, i) => i > 0 && normDate(r[0]) === date);
-    if (idx >= 0) rows[idx] = row; else rows.push(row);
-    const body = rows.slice(1)
-      .filter(r => normDate(r[0]))
-      .map(r => { r[0] = normDate(r[0]); return r; })   // 日期统一成 YYYY-MM-DD
-      .sort((a, b) => normDate(a[0]).localeCompare(normDate(b[0])));
-    writeRows([CSV_HEAD.slice()].concat(body));
-    return { ok: true, path: CSV_PATH, updated: idx >= 0, total: body.length };
+
+    const state = readState();
+    const header = targetHeaderOf(state.header);
+    const idx = indexMapOf(header);
+    const dIdx = idx[DATE_COL];
+
+    const rows = state.rows
+      .map(r => normalizeRow(r, header.length, dIdx))
+      .filter(r => normDate(r[dIdx]));
+
+    const at = rows.findIndex(r => r[dIdx] === date);
+    const target = at >= 0 ? rows[at] : new Array(header.length).fill('');
+
+    /* 只覆盖本版本认识的列；文件里多出来的列保持原值 */
+    CSV_HEAD.forEach((name, i) => {
+      if (name === DATE_COL) return;
+      const pos = idx[name];
+      if (pos == null) return;
+      target[pos] = cells[i] == null ? '' : cells[i];
+    });
+    target[dIdx] = date;
+    if (at < 0) rows.push(target);
+
+    rows.sort((a, b) => String(a[dIdx]).localeCompare(String(b[dIdx])));
+    writeRows([header].concat(rows));
+    return { ok: true, path: CSV_PATH, updated: at >= 0, total: rows.length, columns: header.length };
   } catch (e) {
     return { error: friendlyError(e), path: CSV_PATH };
   }
@@ -110,15 +167,16 @@ function remove(payload) {
   try {
     const date = normDate(payload && payload.date);
     if (!date) return { error: '日期不合法' };
-    if (!fs.existsSync(CSV_PATH)) return { ok: true, removed: 0, path: CSV_PATH };
-    const rows = parseCSV(readTextSafe(CSV_PATH));
-    if (!rows.length) return { ok: true, removed: 0, path: CSV_PATH };
-    const keep = rows.filter((r, i) => i === 0 || normDate(r[0]) !== date);
-    writeRows(keep.length ? keep : [CSV_HEAD.slice()]);
+    const state = readState();
+    const header = targetHeaderOf(state.header);
+    const dIdx = indexMapOf(header)[DATE_COL];
+    const rows = state.rows.map(r => normalizeRow(r, header.length, dIdx));
+    const keep = rows.filter(r => normDate(r[dIdx]) !== date);
+    writeRows([header].concat(keep));
     return { ok: true, removed: rows.length - keep.length, path: CSV_PATH };
   } catch (e) {
     return { error: friendlyError(e), path: CSV_PATH };
   }
 }
 
-module.exports = { CSV_PATH, CSV_HEAD, read, upsert, remove, parseCSV, normDate };
+module.exports = { CSV_PATH, CSV_HEAD, read, upsert, remove, parseCSV, normDate, readState };
