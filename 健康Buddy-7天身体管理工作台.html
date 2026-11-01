@@ -2509,8 +2509,16 @@ function toast(msg){
 }
 function updateTopbar(){
   const win=weekWindow();
-  const a=parseDate(win[0]), b=parseDate(win[6]);
-  $('#topbar-range').textContent=`${a.getMonth()+1}月${a.getDate()}日 – ${b.getMonth()+1}月${b.getDate()}日`;
+  /* 区间起点：有记录就从第一条那天算起，最多回看 7 天；
+     没有任何记录时显示提示，而不是列出一周空白 */
+  const recDates=Object.keys(records).filter(d=>records[d]).sort();
+  const start=recDates.length ? (recDates[0]>win[0] ? recDates[0] : win[0]) : null;
+  if(start){
+    const a=parseDate(start), b=parseDate(win[6]);
+    $('#topbar-range').textContent=`${a.getMonth()+1}月${a.getDate()}日 – ${b.getMonth()+1}月${b.getDate()}日`;
+  }else{
+    $('#topbar-range').textContent='还没开始记录';
+  }
   const n=win.filter(d=>records[d]).length;
   $('#topbar-count').textContent=`${n}/7 天`;
 }
