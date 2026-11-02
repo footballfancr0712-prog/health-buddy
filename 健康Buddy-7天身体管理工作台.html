@@ -157,6 +157,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
 .check-box{border-radius:12px;padding:10px 12px;margin:12px 0;font-size:13px;line-height:1.65}
 .check-box.err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
 .check-box.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.check-box.hint{background:#f8fafc;border:1px solid #e5e7eb;color:#475569}
 .check-box>b{display:block;margin-bottom:6px;font-size:13px}
 .check-box .ck-item{display:flex;gap:6px;margin:6px 0;align-items:flex-start}
 .check-box .ck-dot{flex-shrink:0;font-weight:700;line-height:1.5}
@@ -444,7 +445,6 @@ const DRAFT_KEY = 'healthBuddyDraft.v1';
 function readDraft(){ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)) || null; }catch(e){ return null; } }
 function saveDraft(){
   markDirty();
-  saveConfirmPending=false;
   try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({ k: currentKey, d: collectForm() })); }catch(e){}
   scheduleCheck();
 }
@@ -1790,11 +1790,13 @@ function collectForm(){
   return rec;
 }
 /* ================= 数据校验：填错的数据比没填更糟 =================
- * 分两级：
+ * 分三级：
  *   error — 物理上不可能（睡眠 23 小时、运动 999 分钟），必须改掉才能存
- *   warn  — 可疑或自相矛盾（填的时长和入睡/起床对不上、写了吃什么却标了没吃），
- *           允许保存，但要点第二次按钮确认，避免"手滑存进去"
- * 原则：宁可多问一句，也不要让错数字去影响评分和建议。
+ *   warn + block:true  — 像填错了（时间填反、和别的字段对不上），
+ *                        允许保存，但要点第二次按钮确认，避免"手滑存进去"
+ *   warn + block:false — 只是提醒（睡得太少、水喝得少这种真实情况），
+ *                        只显示，不拦保存，一次点击就存
+ * 原则：拦就拦"大概率是手滑的"，别拦"事实就是如此"。
  */
 
 /* 各字段的可能范围；softMax 只是「值得怀疑」，不是禁止 */
@@ -1825,21 +1827,21 @@ function validateRecord(rec, dateStr){
   if(rec.bedTime&&rec.wakeTime){
     var c=calcSleep(rec.bedTime, rec.wakeTime);
     if(c==null){
-      warns.push({ field:'bedTime', level:'warn',
+      warns.push({ field:'bedTime', level:'warn', block:true,
         msg:'入睡 '+rec.bedTime+'、起床 '+rec.wakeTime+' 算不出合理时长（不到 1 小时或超过 16 小时）——是不是把入睡和起床填反了？' });
     }else if(rec.sleepHours!=null){
       var night=nightSleep(rec);
       if(night>c+0.35){
-        warns.push({ field:'sleepHours', level:'warn',
+        warns.push({ field:'sleepHours', level:'warn', block:true,
           msg:'入睡 '+rec.bedTime+'、起床 '+rec.wakeTime+' 在床只有 '+c.toFixed(1)+' 小时，扣掉午休后夜间却算出 '+f1(night)+' 小时，比在床时间还多——总睡眠填多了，或者午休记少了。' });
       }else if(c-night>2){
-        warns.push({ field:'sleepHours', level:'warn',
+        warns.push({ field:'sleepHours', level:'warn', block:false,
           msg:'在床 '+c.toFixed(1)+' 小时，扣掉午休 '+((rec.napMin||0))+' 分钟后夜间只有 '+f1(night)+' 小时，等于躺了 '+f1(c-night)+' 小时才睡着——如果确实如此，这比睡多久更值得关注；如果是填少了，核对一下。' });
       }
     }
   }
   if(!!rec.bedTime!==!!rec.wakeTime){
-    warns.push({ field:rec.bedTime?'wakeTime':'bedTime', level:'warn',
+    warns.push({ field:rec.bedTime?'wakeTime':'bedTime', level:'warn', block:false,
       msg:'只填了'+(rec.bedTime?'入睡':'起床')+'时间，补上另一个才能自动算睡眠时长。' });
   }
 
@@ -1848,40 +1850,40 @@ function validateRecord(rec, dateStr){
     var nm=['早','午','晚'];
     for(var i=0;i<3;i++){
       if(rec.mealNotes[i]&&!rec.meals[i]){
-        warns.push({ field:'meal'+i, level:'warn',
+        warns.push({ field:'meal'+i, level:'warn', block:true,
           msg:nm[i]+'餐写了「'+rec.mealNotes[i]+'」，但上面标的是没吃——这两个要一致，否则评分按没吃算。' });
       }
     }
   }
   /* 三餐全标没吃，但「主要食物」还选着，说明是忘了勾 */
   if(rec.meals&&rec.meals.filter(Boolean).length===0&&rec.foodType){
-    warns.push({ field:'meals', level:'warn',
+    warns.push({ field:'meals', level:'warn', block:true,
       msg:'三餐都标了没吃，但「主要食物」选的是'+rec.foodType+'——如果那天其实吃了，把对应那顿勾上。' });
   }
 
   /* 4) 落在可疑区间：不一定是错，但值得看一眼 */
   if(rec.sleepHours!=null&&rec.sleepHours>0&&rec.sleepHours<4){
-    warns.push({ field:'sleepHours', level:'warn',
+    warns.push({ field:'sleepHours', level:'warn', block:false,
       msg:'睡眠只有 '+f1(rec.sleepHours)+' 小时，确认一下是不是少填了一位数（比如 7.5 填成了 1.5）。' });
   }
   if(rec.exerciseMin!=null&&rec.exerciseMin>RANGES.exerciseMin.softMax){
-    warns.push({ field:'exerciseMin', level:'warn',
+    warns.push({ field:'exerciseMin', level:'warn', block:true,
       msg:'运动 '+rec.exerciseMin+' 分钟超过 4 小时，确认没把步数或「走了多少米」填进来。' });
   }
   if(rec.waterMl!=null&&rec.waterMl>0&&rec.waterMl<RANGES.waterMl.softMin){
-    warns.push({ field:'waterMl', level:'warn',
+    warns.push({ field:'waterMl', level:'warn', block:false,
       msg:'饮水只有 '+rec.waterMl+' ml：如果只是没记全，建议留空——按低值算会白白扣掉饮水分。' });
   }
   if(rec.sitHours!=null&&rec.sitHours>RANGES.sitHours.softMax){
-    warns.push({ field:'sitHours', level:'warn',
+    warns.push({ field:'sitHours', level:'warn', block:true,
       msg:'久坐 '+f1(rec.sitHours)+' 小时，确认不是把分钟当小时填了。' });
   }
   if(rec.napMin!=null&&rec.napMin>180){
-    warns.push({ field:'napMin', level:'warn',
+    warns.push({ field:'napMin', level:'warn', block:true,
       msg:'午休填了 '+rec.napMin+' 分钟（超过 3 小时），确认一下是不是把「躺着休息」也算进去了。' });
   }
   if(rec.sugarCups!=null&&rec.sugarCups>RANGES.sugarCups.softMax){
-    warns.push({ field:'sugarCups', level:'warn',
+    warns.push({ field:'sugarCups', level:'warn', block:true,
       msg:'含糖饮料 '+rec.sugarCups+' 杯，数量比较夸张，确认一下。' });
   }
 
@@ -1901,7 +1903,9 @@ function validateRecord(rec, dateStr){
 }
 
 /* ---------- 校验结果的展示与交互 ---------- */
-var saveConfirmPending=false;
+/* 记录"已经点过一次确认"的那批提示的指纹；内容改了指纹就变，需要重新确认。
+   用指纹而不是一个布尔值，是因为存草稿、失焦这些动作不该把确认状态冲掉。 */
+var saveConfirmSig=null;
 var FIELD_ID={ sleepHours:'f-sleep', exerciseMin:'f-exercise', waterMl:'f-water',
   sitHours:'f-sit', bedTime:'f-bed', wakeTime:'f-wake', meals:'meal-0' };
 
@@ -1915,7 +1919,6 @@ function scrollToField(field){
 function applyFix(field, val){
   var el=document.getElementById(FIELD_ID[field]||'');
   if(el&&field==='sleepHours'){ el.value=val; }
-  saveConfirmPending=false;
   refreshFormCheck();
   saveDraft();
 }
@@ -1927,18 +1930,23 @@ function refreshFormCheck(){
   var items=v.items||[];
   if(!items.length){
     box.style.display='none'; box.innerHTML=''; box.className='check-box';
-    saveConfirmPending=false;
+    saveConfirmSig=null;
     return v;
   }
   var isErr=v.errors.length>0;
+  var blockers=v.warns.filter(function(w){ return w.block; });
   var more=Math.max(0,items.length-4);
   if(items.length>4) items=items.slice(0,4);
-  box.className='check-box '+(isErr?'err':'warn');
+  /* err = 必须改；warn = 像填错了，要再点一次确认；hint = 只是提醒，不拦保存 */
+  box.className='check-box '+(isErr?'err':(blockers.length?'warn':'hint'));
   box.style.display='';
-  box.innerHTML='<b>'+(isErr?'有几处填得不太对，先改一下：':'保存前确认这几处：')+'</b>'+
-    items.map(function(it,i){
+  var head=isErr?'有几处填得不太对，先改一下：'
+    :(blockers.length?'保存前确认这几处：':'这几个地方提醒一下，不影响保存：');
+  box.innerHTML='<b>'+head+'</b>'+
+    items.map(function(it){
+      var mark=it.level==='error'?'✕':(it.block?'!':'·');
       return '<div class="ck-item">'+
-        '<span class="ck-dot">'+(it.level==='error'?'✕':'!')+'</span>'+
+        '<span class="ck-dot">'+mark+'</span>'+
         '<span>'+esc(it.msg)+
           (it.fix?' <button type="button" class="ck-fix" data-fix="'+it.field+'" data-val="'+it.fix+'">改成 '+it.fix+'</button>':'')+
           ' <button type="button" class="ck-go" data-go="'+it.field+'">去修改</button>'+
@@ -1946,7 +1954,8 @@ function refreshFormCheck(){
     }).join('')+
     (more?'<div class="ck-note">还有 '+more+' 处没列出来，改完上面这些会继续提示。</div>':'')+
     (isErr?'<div class="ck-note">这几项超出正常范围，改掉或清空后才能保存。</div>'
-          :'<div class="ck-note">如果确认没填错，再点一次「保存这一天」就会存进去。</div>');
+          :(blockers.length?'<div class="ck-note">如果确认没填错，再点一次「保存这一天」就会存进去。</div>'
+                            :'<div class="ck-note">这些只是提醒，不算错误，直接保存就行。</div>'));
   /* 绑定按钮 */
   Array.prototype.forEach.call(box.querySelectorAll('.ck-fix'),function(b){
     b.onclick=function(){ applyFix(b.dataset.fix, b.dataset.val); };
@@ -1968,13 +1977,18 @@ function saveDay(){
     toast('有 '+v.errors.length+' 处超出正常范围，先改一下');
     return;
   }
-  if(v.warns.length && !saveConfirmPending){
-    refreshFormCheck();
-    saveConfirmPending=true;
-    toast('请先确认上面 '+v.warns.length+' 处，再点一次保存');
-    return;
+  /* 只有"像填错了"的那几条才拦一次确认；"睡得少/水喝得少"这种真实情况不拦 */
+  var blockers=v.warns.filter(function(w){ return w.block; });
+  if(blockers.length){
+    var sig=blockers.map(function(w){ return w.field+'|'+w.msg; }).join('##');
+    if(sig!==saveConfirmSig){
+      refreshFormCheck();
+      saveConfirmSig=sig;
+      toast('请先确认上面 '+blockers.length+' 处，再点一次保存');
+      return;
+    }
   }
-  saveConfirmPending=false;
+  saveConfirmSig=null;
   var ck=document.getElementById('form-check');
   if(ck){ ck.style.display='none'; ck.innerHTML=''; }
   rec.updatedAt=Date.now();
