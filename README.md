@@ -1,0 +1,139 @@
+# 健康 Buddy · 7天身体管理工作台
+
+一个只给自己用的身体管理工作台。每天用 30 秒记一笔，它负责算分、找原因、给建议。
+
+**没有服务器、没有账号、没有埋点**，数据就在你本机：浏览器里存 localStorage，桌面版写本地 CSV，安卓版可导出 CSV。
+
+---
+
+## 三种形态
+
+| 形态 | 怎么用 | 技术 |
+|---|---|---|
+| 网页版 | 双击 `健康Buddy-7天身体管理工作台.html` 直接用 | 单文件，零依赖 |
+| 桌面版（Windows） | 解压后运行 `HealthBuddy.exe` | Electron |
+| 安卓版 | 安装 `健康Buddy-安卓版-v1.2.10.apk` | Capacitor |
+
+三端是**同一份页面**，只是外壳不同。桌面版多一个「读写本地 CSV」的能力，安卓版能把 CSV 导到手机的 `Documents/健康Buddy` 并调系统分享。
+
+---
+
+## 记什么
+
+每天一条记录，19 个字段：
+
+- **睡眠**：入睡时间、起床时间、总睡眠时长、午休分钟数
+- **活动**：运动分钟、久坐小时
+- **吃喝**：饮水量、三餐吃没吃、三餐吃了什么、含糖饮料杯数、主要食物类型
+- **状态**：精神状态（1–5）、身体自评（1–5）、备注
+
+**睡眠口径**：你填的是「总睡眠（含午休）」，程序自己拆出夜间睡眠 = 总睡眠 − 午休，评分时午休按「超过 60 分钟的部分折半」计算。
+
+## 给什么
+
+- **每日评分**：睡眠 30 / 饮食 20 / 运动 15 / 饮水 15 / 久坐 10 / 状态 10，折算百分制
+- **建议引擎**：分成「证据 → 归因 → 处方」三层。先说数据里有什么，再说为什么，最后给出带剂量的建议（提前到几点睡、还差几杯水、起身几次）
+- **备注校验**：备注里写的事实会和当天数据交叉核对，分成「数据印证 / 数据不支持 / 判不了」三种，自陈事实（生病、恢复期、生理期）单独归一类，不硬套
+- **趋势**：一周的睡眠、运动、饮水、久坐曲线
+- **周报**：按权重挑出最值得改的 4 件事，给可算的指标（睡眠债、社交时差、每周 150 分钟达标天数）
+
+## 输入校验
+
+填错的数据比没填更糟，所以保存前会过一遍校验，分三档：
+
+| 档位 | 例子 | 行为 |
+|---|---|---|
+| 必须改 | 睡眠 23 小时、运动 999 分钟 | 拦住，改完才能存 |
+| 拦一次 | 入睡起床填反、在床时间比睡眠还短、三餐标没吃却写了吃了什么 | 第一次点只提示，第二次点才存 |
+| 只提醒 | 睡眠不足 4 小时、饮水太少、躺很久才睡着 | 灰色提示，一次点击直接存 |
+
+---
+
+## 快速开始
+
+**网页版**
+
+```bash
+# 直接双击这个文件就行，不需要装任何东西
+健康Buddy-7天身体管理工作台.html
+```
+
+**桌面版（Windows x64）**
+
+```bash
+cd desktop-app
+npm install
+npm start                 # 开发模式
+```
+
+打包成绿色版目录（不需要安装程序）：
+
+```bash
+./node_modules/.bin/electron-packager . HealthBuddy --platform=win32 --arch=x64 \
+  --out=dist --overwrite --icon=build/icon.ico --prune=true --ignore="^/dist"
+```
+
+**安卓版**
+
+需要 JDK 21（Capacitor 8 强制要求，17 不行）：
+
+```bash
+cd mobile-app
+./build-release.sh        # 同步页面 → cap sync → assembleRelease → 复制 APK 到仓库根目录
+```
+
+签名用的 `healthbuddy.jks` 和 `keystore.properties` **不在仓库里**（见 `keystore.properties.example`）。自己打包要自备密钥；不备也能出 debug 包。
+
+---
+
+## 技术栈
+
+| 层 | 技术 |
+|---|---|
+| 页面 | 原生 HTML / CSS / JavaScript，单文件约 148 KB、2735 行，零外部依赖，图表全是手写内联 SVG |
+| 桌面 | Electron 45 + @electron/packager 20，`contextIsolation` + `contextBridge`，CSV 读写走 4 个 IPC 通道 |
+| 安卓 | Capacitor 8.6 + `@capacitor/filesystem` + `@capacitor/share`，Gradle 8.14.3、AGP 8.13、JDK 21，minSdk 24 / targetSdk 36 |
+
+**为什么不用框架**：这个页面的目标形态是「一个文件、双击就能用、断网也能用」。引入构建链或 CDN 之后，一旦别人只保存了 HTML，功能就全废了。
+
+---
+
+## 仓库结构
+
+```
+健康Buddy-7天身体管理工作台.html   页面源文件（唯一需要改的地方）
+desktop-app/                       桌面版：main.js / preload.js / csv-store.js
+  └ app/index.html                 页面副本，必须和根目录那份保持一致
+mobile-app/                        安卓工程（只在 android 分支）
+rollback.sh                        版本回退脚本：列版本 / 打包 / 还原
+健康Buddy-CSV数据模板.csv          空模板，19 列
+```
+
+**分支模型**
+
+- `main`：页面 + 桌面版。日常在这里改。
+- `android`：安卓工程 `mobile-app/`。**永不在这个分支改页面**，需要新页面时 `git merge main`。
+- 两条分支共用同一个页面文件，所以合并不会冲突。
+
+---
+
+## 数据与隐私
+
+- 记录默认只存在本机，不上传任何服务器
+- 桌面版直接读写你指定的 CSV 文件，可以自己用 Excel 打开看
+- 页面默认零网络请求；只有在被宿主环境注入数据库 SDK 时才会启用在线同步，没有就自动回退本地存储
+- 公开仓库里没有任何密钥、安装包、个人记录（见 `.gitignore`）
+
+## 已知限制
+
+- 桌面版只打了 Windows x64；Mac 需要自己用 `--platform=darwin --arch=arm64` 重新打
+- 安卓版的 WebView 用系统自带的，版本太老的机器（Android 7–8）没有毛玻璃效果，滚动条可能仍会出现
+- 没有多人协作、没有账号体系：换设备靠导出/导入 CSV 或 JSON
+
+## License
+
+MIT，见 [LICENSE](LICENSE)。
+
+---
+
+<sub>**English**: Health Buddy is a single-user, offline-first health tracking workbench. One self-contained HTML page (no framework, no build step, no CDN) ships as a web page, an Electron desktop app for Windows and a Capacitor Android app. It logs 19 daily fields, scores the day across six weighted dimensions, and generates evidence-based suggestions and a weekly report. All data stays local — no backend, no account, no telemetry. MIT licensed.</sub>
