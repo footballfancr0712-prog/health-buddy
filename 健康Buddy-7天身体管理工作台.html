@@ -158,6 +158,29 @@ input[type=range]{width:100%;accent-color:var(--green)}
 .check-box.err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
 .check-box.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
 .check-box.hint{background:#f8fafc;border:1px solid #e5e7eb;color:#475569}
+/* 追问卡片：问题 + 一键选项 */
+.qa-card .qa-list{margin-top:2px}
+.qa-card .qa-item{padding:11px 0;border-top:1px solid var(--line)}
+.qa-card .qa-item:first-child{border-top:0;padding-top:4px}
+.qa-card .qa-q{font-size:13.5px;color:var(--t1);line-height:1.55;margin-bottom:9px}
+.qa-card .qa-opts{display:flex;flex-wrap:wrap;gap:8px}
+.qa-card .qa-opt{border:1px solid var(--line);background:#fff;color:var(--t1);border-radius:10px;
+  padding:9px 12px;font-size:12.5px;font-family:inherit;cursor:pointer;line-height:1.2}
+.qa-card .qa-opt:active,.qa-card .qa-opt:hover{background:var(--green-bg);border-color:var(--green)}
+.qa-card .qa-done{font-size:12.5px;color:var(--t2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.qa-card .qa-done b{color:var(--t1);font-weight:600}
+.qa-card .qa-redo{border:0;background:none;color:var(--green-d);font-size:12px;font-family:inherit;
+  cursor:pointer;padding:2px 2px;text-decoration:underline}
+.qa-card .qa-insight{margin-top:8px;font-size:12.5px;line-height:1.65;color:#085041;
+  background:var(--green-bg);border-radius:10px;padding:8px 10px}
+/* 情绪关怀卡片：低情绪时先接住人，再谈数据 */
+.care-card{background:linear-gradient(158deg,rgba(255,251,235,.82),rgba(255,247,237,.62));border:1px solid #fde68a}
+.care-card.crisis{background:linear-gradient(158deg,rgba(254,242,242,.9),rgba(255,247,237,.72));border-color:#fecaca}
+.care-card .care-body{font-size:13px;line-height:1.78;color:#4b5563}
+.care-card .care-body p{margin:6px 0}
+.care-card .care-body b{color:#92400e}
+.care-card.crisis .care-body b{color:#b91c1c}
+.care-card .care-note{font-size:12px;color:#9ca3af;margin-top:10px;line-height:1.7}
 .check-box>b{display:block;margin-bottom:6px;font-size:13px}
 .check-box .ck-item{display:flex;gap:6px;margin:6px 0;align-items:flex-start}
 .check-box .ck-dot{flex-shrink:0;font-weight:700;line-height:1.5}
@@ -406,7 +429,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
       <div class="card" id="day-review" style="display:none"></div>
       <div data-page-node-id="1aHa7KrhDOfS7HgbwEq9a1" class="card">
         <div data-page-node-id="Xot95JYjgzpljvNMgG8uQa" class="card-title"><!--pnid:uQbpv6QmLZRAQ7g6qqCSBs-->🔄 CSV 数据导入 / 导出 <span data-page-node-id="RqMgwvKWpSmPmaJRtZUZxV" class="unit"><!--pnid:aPVXwHjmKhqyd0q1SX9S9D-->一次可导入多天，导入后自动算分</span></div>
-        <div data-page-node-id="dQihDJ6hLp2kFWTgTJHHHb" class="hint"><!--pnid:qrtbaFDMmGvuTfA04O5mzc-->表头 14 列（括号里就是单位），列顺序不限、缺列可省：日期(必填，YYYY-MM-DD)、入睡时间 / 起床时间(24 小时制)、睡眠时长(小时)、运动时长(分钟)、饮水量(ml)、早餐 / 午餐 / 晚餐(吃了填「是」，没吃填「否」)、主要食物(食堂 / 外卖 / 自己做 / 快餐 / 均衡)、久坐时长(小时)、精神状态与身体自评(1-5)、备注。三餐三列按「吃了填是、没吃填否」填，三列都填才算完整；如果这天压根没记三餐，三列全留空即可——只有三列全空才会被当作「没记三餐」、不参与评分。</div>
+        <div data-page-node-id="dQihDJ6hLp2kFWTgTJHHHb" class="hint"><!--pnid:qrtbaFDMmGvuTfA04O5mzc-->表头 14 列（括号里就是单位），列顺序不限、缺列可省：日期(必填，YYYY-MM-DD)、入睡时间 / 起床时间(24 小时制)、睡眠时长(小时)、运动时长(分钟)、饮水量(ml)、早餐 / 午餐 / 晚餐(吃了填「是」，没吃填「否」)、主要食物(食堂 / 外卖 / 自己做 / 快餐 / 均衡)、久坐时长(小时)、精神状态与身体自评(1-5)、备注、追问(可选，形如 sleep_short=work;water=forget，点按钮答会自动写入，一般不用手填)。三餐三列按「吃了填是、没吃填否」填，三列都填才算完整；如果这天压根没记三餐，三列全留空即可——只有三列全空才会被当作「没记三餐」、不参与评分。</div>
         <div data-page-node-id="Qrmkru0pOS4dDsKQsAf8xq" class="btn-row" style="margin-top:10px">
           <button data-page-node-id="w2pAyjDt7ZlEXM1h0JOUiL" class="btn primary" id="btn-csv-import" type="button"><!--pnid:HkwQAMwo4VOUFIc2NirgTU-->导入 CSV 文件</button>
           <button data-page-node-id="0M0wFmPkdIDXv4sFhn0ltr" class="btn ghost" id="btn-csv-export" type="button"><!--pnid:J3o7Na802s6LvIaIdQB7GD-->导出全部记录</button>
@@ -540,6 +563,7 @@ function rowToRecord(r){
   if(fieldValue(r,'精神状态')!=null) rec.mood=Number(fieldValue(r,'精神状态'));
   if(fieldValue(r,'身体自评')!=null) rec.bodyScore=Number(fieldValue(r,'身体自评'));
   if(fieldValue(r,'备注')) rec.note=fieldValue(r,'备注');
+  if(fieldValue(r,'追问')){ var qaO=qaFromText(fieldValue(r,'追问')); if(qaO) rec.qa=qaO; }
   rec['_rid']=r._id||null;
   return rec;
 }
@@ -1096,6 +1120,15 @@ var SUGAR_REASONS=[
 function sugarAdviceText(rec, cups){
   var note=String(rec.note||'');
   var head=cups+' 杯含糖饮料';
+  /* 用户在追问里说过原因，就按他说的来，不再从备注里猜 */
+  var qa=(typeof qaVal==='function')?qaVal(rec,'sugar'):null;
+  if(qa){
+    var qaMap={crave:'情绪',wake:'提神',social:'社交',thirst:'解渴',post:'运动后'};
+    var qaLab=qaMap[qa];
+    for(var q=0;q<SUGAR_REASONS.length;q++){
+      if(SUGAR_REASONS[q].label===qaLab) return head+'（你说是'+qaLab+'）——'+SUGAR_REASONS[q].tip;
+    }
+  }
   for(var i=0;i<SUGAR_REASONS.length;i++){
     if(SUGAR_REASONS[i].re.test(note)) return head+'（'+SUGAR_REASONS[i].label+'）——'+SUGAR_REASONS[i].tip;
   }
@@ -1124,14 +1157,84 @@ var BODY_TIP={
   period:'生理期这几天，运动换成拉伸或散步，补一点含铁和蛋白质的（瘦肉、蛋、豆制品），别硬扛。'
 };
 
+/* ---------- 情绪关怀：低情绪先接住人，再谈数据 ----------
+ * 分寸感是这里最重要的东西：
+ *   · 只做「陪伴 + 给出口」，不做诊断、不替代专业帮助；
+ *   · 情绪低的时候不推「加油」「坚持」这类话，也不拿分数说事；
+ *   · 一旦备注里出现自伤/轻生的字眼，其余所有建议全部让位，直接给热线。
+ * 热线只写国家卫健委统一号码：12356（2025-05-01 起全国开通，24 小时、免费、匿名）。
+ */
+var MIND_HOTLINE = '12356';
+var CRISIS_RE = /不想活|活着没意思|没意思活|自杀|自残|轻生|想消失|结束自己|撑不下去|撑不住|活着好累|没有意义|一了百了/;
+
+function mindLevel(rec, dateStr){
+  if(!rec) return null;
+  if(CRISIS_RE.test(String(rec.note||''))) return 'crisis';
+  if(rec.mood==null || rec.mood>2) return null;
+  /* 连续几天都低，和「某一天心情不好」要区别对待 */
+  var days=0, d=dateStr||currentKey;
+  try{
+    for(var i=0;i<7;i++){
+      var r=records[d];
+      if(r && r.mood!=null && r.mood<=2) days++;
+      else break;
+      d=prevDateStr(d);
+    }
+  }catch(e){}
+  return days>=2 ? 'ongoing' : 'low';
+}
+
+function careCardHTML(rec, date){
+  var lv=mindLevel(rec, date);
+  if(!lv) return '';
+  if(lv==='crisis'){
+    return '<div class="card care-card crisis">'+
+      '<div class="card-title">🫂 先停一下，有人可以听你说</div>'+
+      '<div class="care-body">'+
+        '<p>你今天写下的这些，比任何分数都重要。这种时候不用自己扛，也不用先「想清楚」再开口。</p>'+
+        '<p><b>全国心理援助热线 12356</b>：24 小时、免费、匿名，接电话的是受过训练的人。</p>'+
+        '<p>如果此刻有伤害自己的念头，请马上联系一个能到你身边的人陪着；情况紧急就拨 <b>120</b> 或 <b>110</b>。</p>'+
+        '<p class="care-note">这个工具只能记录作息，帮不了这一刻的你——但上面这些号码可以。</p>'+
+      '</div></div>';
+  }
+  var lead = (lv==='ongoing')
+    ? '这几天你的情绪一直偏低。连着几天提不起劲，通常不是「不够坚强」，更像是身体或生活里有什么需要被照顾。'
+    : '这天的情绪不太高。情绪低本身就是个信号，不用急着把它解释成自己的问题。';
+  return '<div class="card care-card">'+
+    '<div class="card-title">🫂 今天先别对自己那么严格</div>'+
+    '<div class="care-body">'+
+      '<p>'+lead+'</p>'+
+      '<p>如果只做一件事：早点放下手机，或者出门走十分钟，或者给一个信得过的人发条消息。三件里挑一件就够。</p>'+
+      '<p class="care-note">要是这种低落连着两周以上，或者已经影响吃饭、睡觉、上课上班，值得找专业的人聊一次：<b>全国心理援助热线 12356</b>（24 小时、免费、匿名）。</p>'+
+    '</div></div>';
+}
+
 /* ---------- 今日 / 记录页回顾：先说该改什么，再说凭什么 ---------- */
 function dayTip(rec){
   if(!rec) return [];
   var dateStr=null;
   try{ dateStr=currentKey; }catch(e){}
+  /* 情绪这条要压过所有数据建议：人在低处时，缺的不是被纠正 */
+  var mind=mindLevel(rec, dateStr);
+  if(mind==='crisis'){
+    return [
+      '这天先不看、也不改任何数据，评分在这里没有意义。',
+      '如果此刻很难受，打 12356（24 小时、免费、匿名），或者告诉一个你能马上联系上的人。',
+      '情况紧急请拨打 120 或 110。'
+    ];
+  }
+  if(mind==='ongoing'){
+    return [
+      '情绪连着几天偏低，这几天的分数不用当真，更别拿它评价自己。',
+      '今天只做一件小事：出门走十分钟，或者比平时早一点躺下，不用一次改很多。',
+      '如果这个状态已经持续两周以上，12356 可以聊，免费匿名。'
+    ];
+  }
   var a=analyzeDay(rec, dateStr);
   var body=bodyStateOf(rec, a.facts);
   var t=[];
+  /* 只是「这天不太高」时不禁用建议，但先把话说软，别让人一条条照做 */
+  if(mind==='low') t.push('这天情绪不太高，下面的建议按心情挑着看，不用一条条都做到。');
   var winRecs=[];
   try{ winRecs=weekWindow().map(function(d){ return { date:d, rec:records[d]||null }; }); }catch(e){}
 
@@ -1192,6 +1295,250 @@ function dayTip(rec){
     }
   }
   return t;
+}
+
+/* ================= 追问：拿你自己的数据反问你 =================
+ * 为什么要有这一层：数据只能看出「结果」，看不出「为什么」。
+ * 同样睡 4 小时，加班和失眠要改的东西正好相反，不问就只能给泛泛的建议。
+ *
+ * 三条规矩：
+ *   1. 每条问题都必须由「某两个数字摆在一起不对劲」触发，问得出凭什么问；
+ *   2. 答案只改建议的口径与归因，**不改分数**——分数要能跨周比较；
+ *   3. 一天最多问 3 个，答案存在 rec.qa 里，随记录一起导出到 CSV 的「追问」列。
+ */
+function qaVal(rec, id){ return (rec && rec.qa && rec.qa[id]) || null; }
+
+var QA_RULES = [
+  {
+    /* 情绪偏低：不问「为什么心情不好」，只问大概是哪一块，好把话说对 */
+    id:'mood_low',
+    when:function(rec){ return !!rec && rec.mood!=null && rec.mood<=2; },
+    q:function(rec){ return '这两天情绪偏低，愿意说说大概是哪一块吗？'; },
+    opts:[['study','学业/工作压力'],['people','人际或感情'],['body','身体不舒服拖着'],['flat','说不上来，就是提不起劲']],
+    tip:{
+      study:'压力大的时候，把「必须做完的事」缩到一件最小可完成的：写完一段、回一封邮件都算。完成感比进度更能把人拉回来。',
+      people:'和人的事最耗神，也最不该一个人反复想。找一个不在场的人说说，哪怕只说三句，脑子里的死循环通常会松一点。',
+      body:'身体不舒服拖久了，情绪会跟着塌：先把症状处理掉（睡够、吃上、该看就看），情绪常常自己回升。',
+      flat:'说不清原因的低落也是真的，不用逼自己找出理由。先把三件事维持住：按时起床、出门晒点太阳、和人说句话。'
+    }
+  },
+  {
+    /* 睡够了还很累：这是主观感受和数据打架的地方，最值得问一句 */
+    id:'tired_ok_sleep',
+    when:function(rec){
+      if(!rec || rec.sleepHours==null) return false;
+      var low = (rec.mood!=null && rec.mood<=2) || (rec.bodyScore!=null && rec.bodyScore<=2);
+      return low && rec.sleepHours>=7;
+    },
+    q:function(rec){
+      var h=f1(rec.sleepHours);
+      var words=[];
+      if(rec.mood!=null && rec.mood<=2) words.push('精神只有 '+rec.mood+'/5');
+      if(rec.bodyScore!=null && rec.bodyScore<=2) words.push('身体自评 '+rec.bodyScore+'/5');
+      return '睡了 '+h+' 小时，'+(words.length?words.join('、'):'但还是觉得累')+'，今天是不是有这些情况？';
+    },
+    opts:[['hard','有剧烈运动'],['event','遇到大事/情绪起伏'],['brain','高强度用脑/赶进度'],['env','天气闷热、吃得太少'],['none','说不上原因']],
+    tip:{
+      hard:'剧烈运动后 24–48 小时发累是正常的（肌肉在修），但睡够了还累说明恢复跟不上：今天别加练，蛋白质和水分补足，明天改成散步或拉伸。',
+      event:'情绪消耗和体力消耗一样会让人累，而且睡一觉补不回来。这种累先把事情放下，给自己半天低强度的余地，别硬扛着照常安排。',
+      brain:'脑子累和身体累是两回事：每 90 分钟离开屏幕 5 分钟，比硬撑到晚上有用得多；睡够了还累，通常是白天一直没停下来。',
+      env:'天热、喝水少、吃得太少都会让人发虚：先补水加一点盐分，吃点有蛋白质的，空腹硬撑是最容易垮的。',
+      none:'睡够却没精神，偶尔一天不用管；连续三四天都这样，问题多半在睡眠质量而不是时长——打鼾、夜里醒、睡前喝酒咖啡都会算进「睡了但没恢复」。'
+    }
+  },
+  {
+    /* 躺了很久才睡着：这一项评分看不出来，但对第二天的状态影响最大 */
+    id:'latency',
+    when:function(rec){
+      if(!rec || !rec.bedTime || !rec.wakeTime || rec.sleepHours==null) return false;
+      var c=calcSleep(rec.bedTime, rec.wakeTime);
+      return c!=null && (c - nightSleep(rec)) > 1.5;
+    },
+    q:function(rec){
+      var gap=calcSleep(rec.bedTime, rec.wakeTime) - nightSleep(rec);
+      return '在床上躺了 '+f1(gap)+' 小时才睡着，主要是？';
+    },
+    opts:[['think','想事情停不下来'],['phone','刷手机/看视频'],['env','环境吵、热或太亮'],['body','身体不舒服']],
+    tip:{
+      think:'躺下 20 分钟还醒着就起来，到客厅做点没意思的事，困了再回床——别让床变成想事情的地方。',
+      phone:'手机放到伸手够不到的地方，充电器挪到客厅。这一条比任何助眠技巧都管用，因为刷手机是在主动推迟睡意。',
+      env:'先改环境：遮光帘、耳塞、空调 24℃ 左右。这三样通常能直接省下半小时入睡时间。',
+      body:'因为不舒服睡不着的，先处理症状（鼻塞、疼痛、胃胀），别硬躺；连续三天影响白天就去看看。'
+    }
+  },
+  {
+    id:'sleep_short',
+    when:function(rec){ return !!rec && rec.sleepHours!=null && rec.sleepHours>0 && rec.sleepHours<6; },
+    q:function(rec){ return '这天只睡了 '+f1(rec.sleepHours)+' 小时，主要是什么原因？'; },
+    opts:[['work','加班/赶作业'],['cant','睡不着'],['phone','刷手机忘了时间'],['early','本来就睡得少']],
+    tip:{
+      work:'赶工的日子里，把睡觉当成硬任务：定一个最晚收工点（比如 01:00），剩下的留到早上——后半夜的效率还不如睡够后的一小时。',
+      cant:'睡不着的夜晚别在床上硬躺，起来做点无聊的事，困了再回去；连续一周入睡困难，值得认真查一次原因。',
+      phone:'缺的不是时间，是放下手机那一刻。设一个「关屏闹钟」，响了就把手机放到另一个房间。',
+      early:'睡得少但白天精神不掉，那是你的节律，不用硬凑时长；如果下午必须靠咖啡撑，说明还是欠了。'
+    }
+  },
+  {
+    /* 含糖饮料：备注没写原因时才问；答了就让 sugarAdviceText 用这个原因，不再从备注里猜 */
+    id:'sugar',
+    when:function(rec){
+      if(!rec || !(rec.sugarCups>0)) return false;
+      var note=String(rec.note||'');
+      return !SUGAR_REASONS.some(function(r){ return r.re.test(note); });
+    },
+    q:function(rec){ return '这 '+rec.sugarCups+' 杯含糖饮料，主要是为了？'; },
+    opts:[['crave','嘴馋/想吃甜'],['wake','提神'],['social','社交/别人买的'],['thirst','解渴/天热'],['post','运动后']],
+    tip:{}
+  },
+  {
+    id:'water',
+    when:function(rec){ return !!rec && rec.waterMl!=null && rec.waterMl>0 && rec.waterMl<1000; },
+    q:function(rec){ return '水只喝了 '+rec.waterMl+' ml，主要是？'; },
+    opts:[['forget','忘了喝'],['hard','不方便接水'],['dislike','不爱喝白水'],['other','喝了茶/汤/饮料']],
+    tip:{
+      forget:'「记得喝水」靠不住，靠环境：桌上放一个 500ml 的杯子，看到就喝，一天四杯刚好达标。',
+      hard:'准备一个随身杯，出门前灌满；没水可接的地方待久了，就把它当成离开的理由之一。',
+      dislike:'不爱白水很正常，加柠檬片、薄荷或者换气泡水都行——只要不加糖，都算数。',
+      other:'茶和汤能补水，但别把白水全替掉：含咖啡因的还利尿，白水至少留一半。'
+    }
+  },
+  {
+    id:'nomove',
+    when:function(rec){
+      return !!rec && (rec.exerciseMin==null || rec.exerciseMin===0) && rec.sitHours!=null && rec.sitHours>=8;
+    },
+    q:function(rec){ return '今天久坐 '+f1(rec.sitHours)+' 小时又没运动，是什么挡住的？'; },
+    opts:[['time','没时间'],['tired','太累'],['sick','身体不舒服'],['forgot','忘了/没想到']],
+    tip:{
+      time:'没整块时间就拆碎：每坐满一小时起身走 2 分钟，一天凑 8 次，对久坐的改善不比一次 30 分钟差。',
+      tired:'太累时别排训练，改成 10 分钟散步或拉伸——目的是打断久坐，不是消耗。',
+      sick:'身体不舒服就先不动，好了从平时一半的量重新开始，别一次补回欠下的。',
+      forgot:'把「动一动」绑在已有习惯后面：午饭回来爬一层楼梯、洗完澡做五个深蹲，靠触发而不是靠记性。'
+    }
+  },
+  {
+    id:'meal',
+    when:function(rec){ return !!rec && rec.meals && rec.meals.some(function(v){ return v===false; }); },
+    q:function(rec){
+      var nm=['早','午','晚'], miss=[];
+      rec.meals.forEach(function(v,i){ if(v===false) miss.push(nm[i]); });
+      return miss.join('、')+'餐没吃，原因是？';
+    },
+    opts:[['busy','没时间/错过饭点'],['diet','在控制体重'],['appetite','不饿/没胃口'],['lazy','懒得买/懒得做']],
+    tip:{
+      busy:'错过饭点比吃错更伤——备点能直接吃的（酸奶、鸡蛋、面包），别让「没时间」变成「不吃」。',
+      diet:'少吃一顿不等于少摄入，后面更容易补回来；真要控，把那一顿换成蛋白质加蔬菜，比直接跳过稳。',
+      appetite:'没胃口时优先保证蛋白质和水分，别拿零食凑数；连着几天吃不下，要留意是不是身体在报警。',
+      lazy:'懒是真实成本，别跟它较劲：一次备两天的量，或者固定几家能快速解决又不太差的店。'
+    }
+  },
+  {
+    id:'late',
+    when:function(rec){
+      return !!rec && !!rec.bedTime && rec.sleepHours!=null
+        && bedToHours(rec.bedTime)>=25.5 && rec.sleepHours>=7;
+    },
+    q:function(rec){ return '睡得晚（'+rec.bedTime+' 才睡）但睡够了，是哪种情况？'; },
+    opts:[['habit','习惯了晚睡'],['nap','白天补过觉'],['work','事情没做完'],['phone','舍不得放下手机']],
+    tip:{
+      habit:'睡得够就不算错。但如果早上起不来、白天发困，说明节律在往后滑——每三天提前 15 分钟，比一次提前一小时容易做到。',
+      nap:'白天补觉会把晚上的睡意推后：午休控制在 30 分钟内，别在下午三点后睡。',
+      work:'把最晚收工时间写下来（比如 00:30），到点就停；剩下的明天做，通常也不会更差。',
+      phone:'睡前那一小时换成别的：洗澡、拉伸、看纸质书。手机不是不能碰，是不能带上床。'
+    }
+  }
+];
+var QA_PRIORITY = ['mood_low','tired_ok_sleep','latency','sleep_short','sugar','water','nomove','meal','late'];
+
+/* 当天该问哪几条：未答的优先，最多 3 条；情绪处于危机状态时一条都不问 */
+function buildQuestions(rec, date){
+  if(!rec) return [];
+  if(mindLevel(rec, date)==='crisis') return [];
+  var hit=[];
+  QA_PRIORITY.forEach(function(id){
+    var rule=null;
+    for(var i=0;i<QA_RULES.length;i++){ if(QA_RULES[i].id===id){ rule=QA_RULES[i]; break; } }
+    if(!rule) return;
+    var ok=false;
+    try{ ok=rule.when(rec); }catch(e){}
+    if(!ok) return;
+    hit.push({ rule:rule, answered:qaVal(rec, id), q:rule.q(rec) });
+  });
+  var un=hit.filter(function(x){ return !x.answered; });
+  var done=hit.filter(function(x){ return !!x.answered; });
+  /* 未答的最多 3 条；已经答过的再留 2 条在下面，答案和解释不能一答完就消失 */
+  return un.slice(0,3).concat(done.slice(0,2));
+}
+
+/* 追问卡片：今日页和记录页共用；date 决定答案写到哪天 */
+function qaCardHTML(rec, date){
+  if(!rec) return '';
+  var list=buildQuestions(rec, date);
+  if(!list.length) return '';
+  var pending=list.filter(function(x){ return !x.answered; }).length;
+
+  var items=list.map(function(it){
+    var id=it.rule.id;
+    if(it.answered){
+      var label=it.answered;
+      it.rule.opts.forEach(function(o){ if(o[0]===it.answered) label=o[1]; });
+      var tip=it.rule.tip[it.answered]||'';
+      return '<div class="qa-item">'+
+        '<div class="qa-done"><span>已记下：<b>'+esc(label)+'</b></span>'+
+        '<button type="button" class="qa-redo" onclick="answerQa(\''+date+'\',\''+id+'\',\'__clear\')">改</button></div>'+
+        (tip?'<div class="qa-insight">'+esc(tip)+'</div>':'')+
+        '</div>';
+    }
+    return '<div class="qa-item">'+
+      '<div class="qa-q">'+esc(it.q)+'</div>'+
+      '<div class="qa-opts">'+it.rule.opts.map(function(o){
+        return '<button type="button" class="qa-opt" onclick="answerQa(\''+date+'\',\''+id+'\',\''+o[0]+'\')">'+esc(o[1])+'</button>';
+      }).join('')+'</div></div>';
+  }).join('');
+
+  return '<div class="card qa-card">'+
+    '<div class="card-title">🤔 '+(pending?('想确认 '+pending+' 件事'):'你回答过的')+
+    ' <span class="unit">点一下就行，答案不改分数，只用来把建议说得更准</span></div>'+
+    '<div class="qa-list">'+items+'</div></div>';
+}
+
+/* 记录答案：写进当天记录，跟着一起存盘 / 导出 */
+function answerQa(date, id, val){
+  var rec=records[date];
+  if(!rec){ toast('这天的记录还没保存，先保存再回答'); return; }
+  rec.qa=rec.qa||{};
+  if(val==='__clear') delete rec.qa[id];
+  else rec.qa[id]=val;
+  if(!Object.keys(rec.qa).length) delete rec.qa;
+  rec.updatedAt=Date.now();
+  records[date]=rec;
+  saveRecords(records);
+  try{ if(typeof deskSyncDay==='function') deskSyncDay(date); }catch(e){}
+  if(onlineMode){ try{ syncDayOnline(date, rec); }catch(e){} }
+  /* 在记录页只重画回顾区，避免把还没保存的表单重置掉 */
+  try{
+    if(document.getElementById('page-log').classList.contains('active')) renderDayReview();
+    else refreshAll();
+  }catch(e){ try{ refreshAll(); }catch(e2){} }
+  toast(val==='__clear'?'已撤销，建议回到原来那条':'记下了，建议按你说的调整');
+}
+
+/* CSV 里的「追问」列：sleep_short=work;water=forget */
+function qaToText(qa){
+  if(!qa) return '';
+  return Object.keys(qa).map(function(k){ return k+'='+qa[k]; }).join(';');
+}
+function qaFromText(txt){
+  var s=String(txt||'').trim();
+  if(!s) return null;
+  var out={}, any=false;
+  s.split(/[;；]/).forEach(function(pair){
+    var i=pair.indexOf('=');
+    if(i<0) return;
+    var k=pair.slice(0,i).trim(), v=pair.slice(i+1).trim();
+    if(k&&v){ out[k]=v; any=true; }
+  });
+  return any?out:null;
 }
 
 /* ---------- 周报：备注 × 数据对照 ----------
@@ -1615,6 +1962,9 @@ function renderHome(){
   if(rec){
     const sc=scoreDay(rec);
     const color=gradeColor(sc?sc.total:null);
+    /* 情绪处于危机状态时，不摆分数、不下「优秀/需要调整」的判词 */
+    const minNow=mindLevel(rec, today);
+    const crisisToday=(minNow==='crisis');
     const cells=[
       ['😴','睡眠', rec.sleepHours!=null?(totalSleep(rec).toFixed(1)+' h'):'—'],
       ['🏃','运动', rec.exerciseMin!=null?rec.exerciseMin+' min':'—'],
@@ -1627,9 +1977,9 @@ function renderHome(){
       <div class="home-top">
         <div>
           <div class="greet">${greet}，今天是 ${fmtMD(today)}</div>
-          <div class="verdict" style="color:${color}">${todayVerdict(sc)}</div>
+          <div class="verdict" style="color:${crisisToday?'var(--t2)':color}">${crisisToday?'今天不算分，把这一天过完就好':todayVerdict(sc)}</div>
         </div>
-        ${sc?ringSVG(sc.total,color):''}
+        ${(sc&&!crisisToday)?ringSVG(sc.total,color):''}
       </div>
       <div class="grid6">${cells.map(c=>`<div class="g6"><span class="gi">${c[0]}</span><span class="gl">${c[1]}</span><b>${c[2]}</b></div>`).join('')}</div>
       ${rec.note?`<div class="note">📝 ${esc(rec.note)}</div>`:''}
@@ -1644,6 +1994,10 @@ function renderHome(){
       <button class="btn primary" onclick="switchTab('log')">📝 记录今天</button>
     </div>`;
   }
+  /* 情绪关怀放最前：低情绪时，先接住人 */
+  html+=careCardHTML(rec||null, today);
+  /* 追问：数据看不出「为什么」，这里补上 */
+  html+=qaCardHTML(rec||null, today);
   html+=`<div class="card">
     <div class="card-title">本周身体管理评分</div>
     ${ws!=null?`<div class="week-score"><b style="color:${gradeColor(ws)}">${ws}</b><span class="unit">/ 100</span><em>${gradeLabel(ws)}</em></div>
@@ -1652,7 +2006,7 @@ function renderHome(){
     <div class="week-dots">${winRecs.map(x=>`<span class="wd ${x.rec?'has':''}">${'日一二三四五六'[parseDate(x.date).getDay()]}</span>`).join('')}</div>
     <div class="hint">已记录 ${n}/7 天 · 评分口径：睡眠30 + 运动20 + 饮水15 + 三餐15 + 久坐10 + 主观状态10，按已填写项折算为百分制</div>
   </div>
-  <div class="disclaimer">本工具仅做日常作息与生活习惯的记录整理，不涉及疾病诊断或医疗建议。</div>`;
+  <div class="disclaimer">本工具仅做日常作息与生活习惯的记录整理，不涉及疾病诊断或医疗建议。<br>情绪难以承受时，请联系专业帮助：全国心理援助热线 12356（24 小时、免费、匿名）；紧急情况拨 120 / 110。</div>`;
   $('#home-body').innerHTML=html;
 }
 
@@ -2083,6 +2437,40 @@ function dataCheckHTML(winRecs){
   '</div>';
 }
 
+/* 周报里汇总本周的追问答案：同一件事反复出现，才说明它是习惯而不是偶然 */
+var QA_TITLES={ tired_ok_sleep:'睡够还是累', latency:'躺很久才睡着', sleep_short:'睡眠不足',
+  sugar:'含糖饮料', water:'水喝得少', nomove:'没运动', meal:'有一餐没吃', late:'睡得晚但睡够' };
+function qaWeekHTML(winRecs){
+  if(!winRecs||!winRecs.length) return '';
+  var map={}, dayWith=0;
+  winRecs.forEach(function(x){
+    var qa=x.rec&&x.rec.qa;
+    if(!qa) return;
+    var keys=Object.keys(qa);
+    if(!keys.length) return;
+    dayWith++;
+    keys.forEach(function(k){
+      var key=k+'='+qa[k];
+      if(!map[key]) map[key]={ id:k, val:qa[k], days:[] };
+      map[key].days.push(x.date);
+    });
+  });
+  var keys=Object.keys(map);
+  if(!keys.length) return '';
+  keys.sort(function(a,b){ return map[b].days.length-map[a].days.length; });
+  var lines=keys.slice(0,4).map(function(k){
+    var it=map[k], label=it.val, rule=null;
+    for(var i=0;i<QA_RULES.length;i++){ if(QA_RULES[i].id===it.id){ rule=QA_RULES[i]; break; } }
+    if(rule) rule.opts.forEach(function(o){ if(o[0]===it.val) label=o[1]; });
+    return (QA_TITLES[it.id]||it.id)+' → '+label+'（'+it.days.length+' 天）';
+  });
+  return '<div class="card">'+
+    '<div class="card-title">你回答过的问题 <span class="unit">'+dayWith+' 天里有回答</span></div>'+
+    '<div class="tips">'+lines.map(function(t){ return '<div class="tip">· '+esc(t)+'</div>'; }).join('')+'</div>'+
+    '<div class="hint">这些答案不参与打分，只用来判断该改哪一块；同一件事这周出现三次以上，才值得当成习惯去改。</div>'+
+    '</div>';
+}
+
 function renderReport(){
   const win=weekWindow();
   const winRecs=win.map(d=>({date:d, rec:records[d]||null}));
@@ -2124,6 +2512,7 @@ function renderReport(){
       <div class="card-title">一周数据总览</div>
       <div class="stat-grid">${stats.map(s=>`<div class="stat"><span class="si">${s[0]}</span><div><span class="sl">${s[1]}</span><b>${s[2]}</b></div></div>`).join('')}</div>
     </div>
+    ${qaWeekHTML(winRecs)}
     <div class="card">
       <div class="card-title">本周身体管理评分</div>
       <div class="report-score">
@@ -2153,7 +2542,7 @@ function renderReport(){
     </div>
     ${dataCheckHTML(winRecs)}
     ${noteBlockHTML(winRecs)}
-    <div class="disclaimer">本工具仅做日常作息与生活习惯的记录整理，所有评分与建议只基于你填写的数据，不构成任何医疗诊断或治疗建议。</div>
+    <div class="disclaimer">本工具仅做日常作息与生活习惯的记录整理，所有评分与建议只基于你填写的数据，不构成任何医疗诊断或治疗建议。<br>情绪难以承受时请联系专业帮助：全国心理援助热线 12356（24 小时）；紧急情况拨 120 / 110。</div>
   `;
 }
 
@@ -2163,7 +2552,7 @@ function renderReport(){
  * 日期,入睡时间,起床时间,睡眠时长,运动时长,饮水量,早餐,午餐,晚餐,主要食物,久坐时长,精神状态,身体自评,备注
  * 也可以直接用 window.healthBuddy.importCSV(csv文本) 编程式导入。
  */
-var CSV_HEADERS = ['日期','入睡时间','起床时间','睡眠时长(小时)','午休(分钟)','运动时长(分钟)','饮水量(ml)','早餐(吃了填是，没吃填否)','午餐(吃了填是，没吃填否)','晚餐(吃了填是，没吃填否)','早餐吃了什么','午餐吃了什么','晚餐吃了什么','含糖饮料(杯)','主要食物(食堂/外卖/自己做/快餐/均衡)','久坐时长(小时)','精神状态(1-5)','身体自评(1-5)','备注'];
+var CSV_HEADERS = ['日期','入睡时间','起床时间','睡眠时长(小时)','午休(分钟)','运动时长(分钟)','饮水量(ml)','早餐(吃了填是，没吃填否)','午餐(吃了填是，没吃填否)','晚餐(吃了填是，没吃填否)','早餐吃了什么','午餐吃了什么','晚餐吃了什么','含糖饮料(杯)','主要食物(食堂/外卖/自己做/快餐/均衡)','久坐时长(小时)','精神状态(1-5)','身体自评(1-5)','备注','追问'];
 var CSV_ALIAS = {
   '日期':'日期','date':'日期','记录日期':'日期',
   '入睡时间':'入睡时间','入睡':'入睡时间','上床时间':'入睡时间','睡觉时间':'入睡时间',
@@ -2177,6 +2566,7 @@ var CSV_ALIAS = {
   '精神状态':'精神状态','精神':'精神状态','心情':'精神状态',
   '身体自评':'身体自评','身体':'身体自评','身体评分':'身体自评',
   '备注':'备注','note':'备注',
+  '追问':'追问','问答':'追问','qa':'追问',
   '早餐吃了什么':'早餐吃了什么','早饭吃了':'早餐吃了什么',
   '午餐吃了什么':'午餐吃了什么','午饭吃了':'午餐吃了什么',
   '晚餐吃了什么':'晚餐吃了什么','晚饭吃了':'晚餐吃了什么',
@@ -2305,6 +2695,7 @@ function csvRowToRecord(headIdx, row){
   var mood=csvToNum(g('精神状态')); if(mood!=null) rec.mood=Math.min(5,Math.max(1,Math.round(mood)));
   var body=csvToNum(g('身体自评')); if(body!=null) rec.bodyScore=Math.min(5,Math.max(1,Math.round(body)));
   var note=g('备注'); if(note) rec.note=note.slice(0,40);
+  var qaTxt=g('追问'); if(qaTxt){ var qaObj=qaFromText(qaTxt); if(qaObj) rec.qa=qaObj; }
   rec['_date']=d;
   return rec;
 }
@@ -2435,7 +2826,7 @@ function exportRecordsCSV(){
       (r.mealNotes&&r.mealNotes[0])||'', (r.mealNotes&&r.mealNotes[1])||'', (r.mealNotes&&r.mealNotes[2])||'',
       r.sugarCups!=null?r.sugarCups:'',
       r.foodType||'', r.sitHours!=null?r.sitHours:'', r.mood!=null?r.mood:'', r.bodyScore!=null?r.bodyScore:'',
-      r.note||''
+      r.note||'', qaToText(r.qa)
     ].map(csvCell).join(','));
   });
   downloadTextCSV('健康Buddy-记录-'+fmtDate(new Date())+'.csv', '\ufeff'+lines.join('\r\n'), '已导出 '+dates.length+' 天记录');
@@ -2598,6 +2989,9 @@ function renderDayReview(){
       '</span></div>'+
     (sc?'<div class="week-score"><b style="color:'+color+'">'+sc.total+'</b><span class="unit">/ 100</span><em>'+gradeLabel(sc.total)+'</em></div>':'')+
     '<div class="tips">'+tips.map(function(t){ return '<div class="tip">· '+t+'</div>'; }).join('')+'</div>';
+  /* 记录页里也能回答：选中哪天就写进哪天 */
+  box.innerHTML+=careCardHTML(rec, currentKey);
+  box.innerHTML+=qaCardHTML(rec, currentKey);
 }
 
 /* ================= 应用框架 ================= */
