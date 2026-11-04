@@ -1008,8 +1008,8 @@ function rxFor(dim, rec, opts){
       return '生病时胃口差是正常的，别按「三餐齐全」要求自己——少量多餐、每顿有蛋白质（鸡蛋、牛奶、粥加蛋）就够，别空着肚子吃药。';
     }
     if(r.meals){
-      var miss=[];
-      ['早餐','午餐','晚餐'].forEach(function(n,i){ if(!r.meals[i]) miss.push(n); });
+      var miss=[], mxlim=mealWindowPassed(opts&&opts.date);
+      ['早餐','午餐','晚餐'].forEach(function(n,i){ if(!r.meals[i] && mxlim[i]) miss.push(n); });
       if(miss.length) return '这天缺了'+miss.join('、')+'——先把缺的那顿补成「有蛋白质的最小份」（鸡蛋、牛奶、酸奶都算），比追求吃好更容易坚持。';
     }
     return '三餐规律还差一点，把吃饭时间固定下来比吃什么都重要。';
@@ -1209,6 +1209,22 @@ function careCardHTML(rec, date){
     '</div></div>';
 }
 
+/* 今天还没到那个点，就别拿它当「待改项」——中午十二点说「三餐亏了 10 分」同样没道理 */
+function tooEarlyForDim(dim, rec, dateStr, nowHour){
+  if(!isTodayStr(dateStr)) return false;
+  var h=(nowHour==null)?new Date().getHours():nowHour;
+  if(dim==='exercise') return h<18;
+  if(dim==='meals'){
+    if(!rec || !rec.meals) return false;
+    var lim=mealWindowPassed(dateStr, h), miss=[];
+    rec.meals.forEach(function(v,i){ if(v===false) miss.push(i); });
+    if(!miss.length) return false;
+    /* 缺的那几顿全都还没到饭点 → 属于「还没发生」，不是「没吃」 */
+    return miss.every(function(i){ return !lim[i]; });
+  }
+  return false;
+}
+
 /* ---------- 今日 / 记录页回顾：先说该改什么，再说凭什么 ---------- */
 function dayTip(rec){
   if(!rec) return [];
@@ -1255,13 +1271,16 @@ function dayTip(rec){
   var named={ sleep:'睡眠', exercise:'运动', water:'饮水', meals:'三餐', sit:'久坐', mood:'状态' };
   var skip={};
   if(a.sugar) skip.water=1;   /* 含糖那条已经讲过补水，别再说一遍喝水 */
+  var earlySkip=0;
   for(var i=0;i<a.defs.length;i++){
     var d=a.defs[i];
     if(skip[d.dim]) continue;
+    /* 今天还没到那个点的事（比如中午就说三餐亏分）先不算待改项 */
+    if(tooEarlyForDim(d.dim, rec, dateStr)){ earlySkip++; continue; }
     /* 生病/恢复期：吃和动都不该被当成待改项，否则会出现「建议你去改，又说别要求自己」的矛盾 */
     if(body && d.dim==='exercise') continue;                       /* 运动交给身体状态那段统一说 */
     if((body==='sick'||body==='recovering') && d.dim==='meals') continue;   /* 生病时胃口差不算扣分项 */
-    var rx=rxFor(d.dim, rec, { baseBed: bedBaseOf(winRecs), body: body });
+    var rx=rxFor(d.dim, rec, { baseBed: bedBaseOf(winRecs), body: body, date: dateStr });
     if(rx){
       var lead = d.lost>=8 ? ('最值得改的是'+named[d.dim]+'（这项丢了 '+d.lost+' 分）：')
                            : ('还可以顺手改一下'+named[d.dim]+'（丢了 '+d.lost+' 分）：');
@@ -1290,6 +1309,8 @@ function dayTip(rec){
     if(rec.mood!=null||rec.bodyScore!=null) filled++;
     if(filled<3){
       t.push('这天只填了 '+filled+' 项，还看不出规律——凑齐 3 项以上（睡眠、饮水、久坐最容易填）才谈得上分析。');
+    }else if(earlySkip){
+      t.push('现在才 '+new Date().getHours()+' 点，有几项还没到该评价的时候——晚饭、运动这些晚上再看更准。');
     }else{
       t.push('这天各项都在正常范围，没有明显扣分项，保持这个节奏就好。');
     }
@@ -1307,6 +1328,28 @@ function dayTip(rec){
  *   3. 一天最多问 3 个，答案存在 rec.qa 里，随记录一起导出到 CSV 的「追问」列。
  */
 function qaVal(rec, id){ return (rec && rec.qa && rec.qa[id]) || null; }
+
+/* ---------- 时间闸门：还没到那个点的事，不配被问 ----------
+ * 中午 12 点问「晚饭为什么没吃」是最典型的蠢问题。
+ * 规则：
+ *   · 只有「今天」才看时间，过去的日子已经过完，照常问；
+ *   · 三餐按各自饭点开闸：早 10:00 / 午 14:00 / 晚 20:00；
+ *   · 饮水 16:00、运动 19:00 之后才问——太早说「你今天水喝少了」不公平。
+ */
+function isTodayStr(date){
+  try{ return date === fmtDate(new Date()); }catch(e){ return false; }
+}
+function mealWindowPassed(date, nowHour){
+  if(!isTodayStr(date)) return [true,true,true];
+  var h=(nowHour==null)?new Date().getHours():nowHour;
+  return [h>=10, h>=14, h>=20];
+}
+function qaTimeGate(rule, date, nowHour){
+  if(!rule || rule.since==null) return true;
+  if(!isTodayStr(date)) return true;
+  var h=(nowHour==null)?new Date().getHours():nowHour;
+  return h>=rule.since;
+}
 
 var QA_RULES = [
   {
@@ -1392,6 +1435,7 @@ var QA_RULES = [
   },
   {
     id:'water',
+    since:16,           /* 下午四点前喝得少不算少 */
     when:function(rec){ return !!rec && rec.waterMl!=null && rec.waterMl>0 && rec.waterMl<1000; },
     q:function(rec){ return '水只喝了 '+rec.waterMl+' ml，主要是？'; },
     opts:[['forget','忘了喝'],['hard','不方便接水'],['dislike','不爱喝白水'],['other','喝了茶/汤/饮料']],
@@ -1404,6 +1448,7 @@ var QA_RULES = [
   },
   {
     id:'nomove',
+    since:19,           /* 晚上七点后才谈「今天没运动」 */
     when:function(rec){
       return !!rec && (rec.exerciseMin==null || rec.exerciseMin===0) && rec.sitHours!=null && rec.sitHours>=8;
     },
@@ -1418,14 +1463,20 @@ var QA_RULES = [
   },
   {
     id:'meal',
-    when:function(rec){ return !!rec && rec.meals && rec.meals.some(function(v){ return v===false; }); },
-    q:function(rec){
-      var nm=['早','午','晚'], miss=[];
-      rec.meals.forEach(function(v,i){ if(v===false) miss.push(nm[i]); });
+    /* 只算「饭点已经过了还没吃」的那几顿，中午不问晚饭，早上不问午饭 */
+    when:function(rec, date){
+      if(!rec || !rec.meals) return false;
+      var lim=mealWindowPassed(date);
+      return rec.meals.some(function(v,i){ return v===false && lim[i]; });
+    },
+    q:function(rec, date){
+      var lim=mealWindowPassed(date), nm=['早','午','晚'], miss=[];
+      rec.meals.forEach(function(v,i){ if(v===false && lim[i]) miss.push(nm[i]); });
       return miss.join('、')+'餐没吃，原因是？';
     },
-    opts:[['busy','没时间/错过饭点'],['diet','在控制体重'],['appetite','不饿/没胃口'],['lazy','懒得买/懒得做']],
+    opts:[['ate','其实吃了，忘了勾'],['busy','没时间/错过饭点'],['diet','在控制体重'],['appetite','不饿/没胃口'],['lazy','懒得买/懒得做']],
     tip:{
+      ate:'',
       busy:'错过饭点比吃错更伤——备点能直接吃的（酸奶、鸡蛋、面包），别让「没时间」变成「不吃」。',
       diet:'少吃一顿不等于少摄入，后面更容易补回来；真要控，把那一顿换成蛋白质加蔬菜，比直接跳过稳。',
       appetite:'没胃口时优先保证蛋白质和水分，别拿零食凑数；连着几天吃不下，要留意是不是身体在报警。',
@@ -1459,10 +1510,11 @@ function buildQuestions(rec, date){
     var rule=null;
     for(var i=0;i<QA_RULES.length;i++){ if(QA_RULES[i].id===id){ rule=QA_RULES[i]; break; } }
     if(!rule) return;
+    if(!qaTimeGate(rule, date)) return;          /* 还没到那个点，就别问 */
     var ok=false;
-    try{ ok=rule.when(rec); }catch(e){}
+    try{ ok=rule.when(rec, date); }catch(e){}
     if(!ok) return;
-    hit.push({ rule:rule, answered:qaVal(rec, id), q:rule.q(rec) });
+    hit.push({ rule:rule, answered:qaVal(rec, id), q:rule.q(rec, date) });
   });
   var un=hit.filter(function(x){ return !x.answered; });
   var done=hit.filter(function(x){ return !!x.answered; });
@@ -1506,6 +1558,24 @@ function qaCardHTML(rec, date){
 function answerQa(date, id, val){
   var rec=records[date];
   if(!rec){ toast('这天的记录还没保存，先保存再回答'); return; }
+  /* 「其实吃了」不是回答，是修数据：把到点却勾成没吃的那几顿改回来 */
+  if(id==='meal' && val==='ate'){
+    var lim=mealWindowPassed(date);
+    if(rec.meals){
+      rec.meals=rec.meals.map(function(v,i){ return (!v && lim[i]) ? true : v; });
+    }
+    rec.updatedAt=Date.now();
+    records[date]=rec;
+    saveRecords(records);
+    try{ if(typeof deskSyncDay==='function') deskSyncDay(date); }catch(e){}
+    if(onlineMode){ try{ syncDayOnline(date, rec); }catch(e){} }
+    try{
+      if(document.getElementById('page-log').classList.contains('active')) renderDayReview();
+      else refreshAll();
+    }catch(e){ try{ refreshAll(); }catch(e2){} }
+    toast('已按「吃了」记上，这天的分数也跟着改了');
+    return;
+  }
   rec.qa=rec.qa||{};
   if(val==='__clear') delete rec.qa[id];
   else rec.qa[id]=val;
