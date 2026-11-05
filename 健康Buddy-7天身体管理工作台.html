@@ -173,6 +173,11 @@ input[type=range]{width:100%;accent-color:var(--green)}
   cursor:pointer;padding:2px 2px;text-decoration:underline}
 .qa-card .qa-insight{margin-top:8px;font-size:12.5px;line-height:1.65;color:#085041;
   background:var(--green-bg);border-radius:10px;padding:8px 10px}
+/* 「其他」：就地写一句，不上弹窗 */
+.qa-card .qa-other{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.qa-card .qa-other input{flex:1;min-width:150px;border:1px solid var(--line);border-radius:10px;
+  padding:9px 11px;font-size:16px;font-family:inherit;color:var(--t1);background:#fff}
+.qa-card .qa-other input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(16,185,129,.12)}
 /* 情绪关怀卡片：低情绪时先接住人，再谈数据 */
 .care-card{background:linear-gradient(158deg,rgba(255,251,235,.82),rgba(255,247,237,.62));border:1px solid #fde68a}
 .care-card.crisis{background:linear-gradient(158deg,rgba(254,242,242,.9),rgba(255,247,237,.72));border-color:#fecaca}
@@ -1123,6 +1128,8 @@ function sugarAdviceText(rec, cups){
   /* 用户在追问里说过原因，就按他说的来，不再从备注里猜 */
   var qa=(typeof qaVal==='function')?qaVal(rec,'sugar'):null;
   if(qa){
+    if(qaIsOther(qa))
+      return head+'（你说的是「'+qaOtherText(qa)+'」）——这种原因一两句话给不出准建议，先把杯数减半，看看它到底在替什么。';
     var qaMap={crave:'情绪',wake:'提神',social:'社交',thirst:'解渴',post:'运动后'};
     var qaLab=qaMap[qa];
     for(var q=0;q<SUGAR_REASONS.length;q++){
@@ -1501,6 +1508,48 @@ var QA_RULES = [
 ];
 var QA_PRIORITY = ['mood_low','tired_ok_sleep','latency','sleep_short','sugar','water','nomove','meal','late'];
 
+/* 每条都给一个「其他」出口：选项列不全时，必须能自己写一句 */
+QA_RULES.forEach(function(r){
+  if(!r.opts) return;
+  var has=false;
+  r.opts.forEach(function(o){ if(o[0]==='other') has=true; });
+  if(!has) r.opts.push(['other','其他（自己写）']);
+});
+
+/* 「其他」的答案格式：other:<URI 编码后的原文>
+ * 用编码是为了让 ; 和 = 不会撞坏 CSV 的 key=value 结构 */
+function qaIsOther(v){ return typeof v==='string' && v.indexOf('other:')===0; }
+function qaOtherText(v){
+  if(!qaIsOther(v)) return '';
+  try{ return decodeURIComponent(v.slice(6)); }catch(e){ return v.slice(6); }
+}
+function qaOtherVal(text){ return 'other:'+encodeURIComponent(String(text||'').slice(0,40)); }
+
+/* 正在写「其他」的那一条：date|id */
+var qaEditKey=null;
+function qaRefreshCurrent(){
+  try{
+    if(document.getElementById('page-log').classList.contains('active')) renderDayReview();
+    else refreshAll();
+  }catch(e){ try{ refreshAll(); }catch(e2){} }
+}
+function qaAskOther(date, id){
+  qaEditKey=date+'|'+id;
+  qaRefreshCurrent();
+  setTimeout(function(){
+    var el=document.getElementById('qa-other-input');
+    if(el){ try{ el.focus(); }catch(e){} }
+  },60);
+}
+function qaCancelOther(){ qaEditKey=null; qaRefreshCurrent(); }
+function qaSubmitOther(date, id){
+  var el=document.getElementById('qa-other-input');
+  var txt=el?String(el.value||'').trim():'';
+  if(!txt){ toast('写几个字就行，比如「和朋友闹别扭了」'); return; }
+  qaEditKey=null;
+  answerQa(date, id, qaOtherVal(txt));
+}
+
 /* 当天该问哪几条：未答的优先，最多 3 条；情绪处于危机状态时一条都不问 */
 function buildQuestions(rec, date){
   if(!rec) return [];
@@ -1531,20 +1580,37 @@ function qaCardHTML(rec, date){
 
   var items=list.map(function(it){
     var id=it.rule.id;
+    var editKey=date+'|'+id;
     if(it.answered){
-      var label=it.answered;
-      it.rule.opts.forEach(function(o){ if(o[0]===it.answered) label=o[1]; });
-      var tip=it.rule.tip[it.answered]||'';
+      var label=it.answered, tip=it.rule.tip[it.answered]||'';
+      if(qaIsOther(it.answered)){
+        label='「'+qaOtherText(it.answered)+'」';
+        tip='这句我记下了。数据看不出来的那部分就靠它——同一个情况连着出现几天，就会被当成一个信号看。';
+      }else{
+        it.rule.opts.forEach(function(o){ if(o[0]===it.answered) label=o[1]; });
+      }
       return '<div class="qa-item">'+
         '<div class="qa-done"><span>已记下：<b>'+esc(label)+'</b></span>'+
         '<button type="button" class="qa-redo" onclick="answerQa(\''+date+'\',\''+id+'\',\'__clear\')">改</button></div>'+
         (tip?'<div class="qa-insight">'+esc(tip)+'</div>':'')+
         '</div>';
     }
+    if(qaEditKey===editKey){
+      return '<div class="qa-item">'+
+        '<div class="qa-q">'+esc(it.q)+'</div>'+
+        '<div class="qa-other">'+
+          '<input id="qa-other-input" maxlength="40" type="text" placeholder="写一句就行，比如「和朋友闹别扭了」"'+
+          ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();qaSubmitOther(\''+date+'\',\''+id+'\')}">'+
+          '<button type="button" class="qa-opt" onclick="qaSubmitOther(\''+date+'\',\''+id+'\')">存下</button>'+
+          '<button type="button" class="qa-redo" onclick="qaCancelOther()">取消</button>'+
+        '</div></div>';
+    }
     return '<div class="qa-item">'+
       '<div class="qa-q">'+esc(it.q)+'</div>'+
       '<div class="qa-opts">'+it.rule.opts.map(function(o){
-        return '<button type="button" class="qa-opt" onclick="answerQa(\''+date+'\',\''+id+'\',\''+o[0]+'\')">'+esc(o[1])+'</button>';
+        var act = (o[0]==='other') ? ('qaAskOther(\''+date+'\',\''+id+'\')')
+                                   : ('answerQa(\''+date+'\',\''+id+'\',\''+o[0]+'\')');
+        return '<button type="button" class="qa-opt" onclick="'+act+'">'+esc(o[1])+'</button>';
       }).join('')+'</div></div>';
   }).join('');
 
@@ -2531,7 +2597,8 @@ function qaWeekHTML(winRecs){
   var lines=keys.slice(0,4).map(function(k){
     var it=map[k], label=it.val, rule=null;
     for(var i=0;i<QA_RULES.length;i++){ if(QA_RULES[i].id===it.id){ rule=QA_RULES[i]; break; } }
-    if(rule) rule.opts.forEach(function(o){ if(o[0]===it.val) label=o[1]; });
+    if(qaIsOther(it.val)) label='「'+qaOtherText(it.val)+'」';
+    else if(rule) rule.opts.forEach(function(o){ if(o[0]===it.val) label=o[1]; });
     return (QA_TITLES[it.id]||it.id)+' → '+label+'（'+it.days.length+' 天）';
   });
   return '<div class="card">'+
