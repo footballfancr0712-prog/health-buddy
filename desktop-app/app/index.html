@@ -795,12 +795,15 @@ function weekScore(winRecs){
 }
 function gradeLabel(s){ if(s==null) return '—'; if(s>=85) return '优秀'; if(s>=70) return '良好'; if(s>=55) return '一般'; return '需要调整'; }
 function gradeColor(s){ if(s==null) return '#9ca3af'; if(s>=85) return '#10b981'; if(s>=70) return '#059669'; if(s>=55) return '#f59e0b'; return '#ef4444'; }
-function todayVerdict(sc){
+function todayVerdict(sc, rec){
   if(!sc) return '还没记录';
-  if(sc.total>=85) return '状态在线';
-  if(sc.total>=70) return '整体不错';
-  if(sc.total>=55) return '有点疲惫';
-  return '需要调整';
+  /* 分数低但你自己打的分不低：别用「有点疲惫」去否定你的感受 */
+  var selfOk = !!(rec && ((rec.mood!=null&&rec.mood>=4)||(rec.bodyScore!=null&&rec.bodyScore>=4)));
+  var shortSleep = !!(rec && rec.sleepHours!=null && rec.sleepHours<4.5);
+  if(sc.total>=85) return shortSleep?'状态在线，但睡眠欠着':'状态在线';
+  if(sc.total>=70) return shortSleep?'整体还行，但睡眠欠着':'整体不错';
+  if(sc.total>=55) return selfOk?'数据偏低，但你说还行':'有点疲惫';
+  return selfOk?'数据偏低，但你说还行':'需要调整';
 }
 
 /* ================= 分析引擎：证据 → 归因 → 处方 =================
@@ -841,8 +844,13 @@ var NOTE_FACTS=[
       return false;                                              /* 两项都正常，累另有原因 */
     },
     yes:function(r){
-      if(r.sleepHours!=null&&r.sleepHours<6.5)
-        return '备注说累，数据指向同一个地方：睡眠只有 '+f1(r.sleepHours)+' h。先补觉，别急着找别的原因。';
+      if(r.sleepHours!=null&&r.sleepHours<6.5){
+        /* 备注里同时写了当天的消耗（运动/赶工），就别一句「别急着找别的原因」把话堵死 */
+        var extra=/踢|打球|球赛|跑步|健身|爬山|骑车|游泳|体测|比赛|徒步|军训|搬|加班|通宵|考试|论文|汇报|赶/.test(String(r.note||''));
+        if(extra)
+          return '备注说累，同时写了当天的消耗（运动或事情）——睡眠只有 '+f1(r.sleepHours)+' h 会让恢复变慢，这两天先补觉、别再叠加消耗，比找别的原因有用。';
+        return '备注说累，数据指向同一个地方：睡眠只有 '+f1(r.sleepHours)+' h。先补觉，不用急着找别的原因。';
+      }
       return '备注说累，但睡眠有 '+f1(r.sleepHours)+' h，反而是久坐 '+f1(r.sitHours)+' h——这次的累更像「坐太久」而不是「睡不够」，每坐 1 小时起身 2 分钟比早睡更管用。';
     },
     no:function(r){ return '备注说累，而你睡了 '+f1(r.sleepHours)+' h，久坐 '+f1(r.sitHours)+' h 也正常——睡眠和久坐都不是主因，可以从饮水、三餐和情绪上找。'; },
@@ -1061,6 +1069,14 @@ function sleepLatencyAdvice(rec){
   if(!rec||!rec.bedTime||!rec.wakeTime) return null;
   var c=calcSleep(rec.bedTime, rec.wakeTime); if(c==null) return null;
   var night=nightSleep(rec); if(night==null) return null;
+  var total=totalSleep(rec);
+  /* 前提校验：总睡眠 ≥ 在床时间时，减出来的差值不是「躺了多久」——
+     要么「睡眠时长」填的是夜间睡眠，要么午休记重了。这时候不能下结论。 */
+  if(total!=null){
+    if(total>c+0.2)
+      return '你填的睡眠时长 '+f1(total)+' h 比在床时间 '+f1(c)+' h 还长——如果那个数填的是「夜间睡眠」，请改成含午休的总时长，入睡耗时才算得准。';
+    if(total>=c-0.1) return null;
+  }
   var lat=c-night;
   if(lat<1) return null;
   return '按记录你躺了 '+f1(lat)+' 小时才睡着（在床 '+f1(c)+' h，实际睡着 '+f1(night)+' h）——这比"睡够没有"更值得处理：睡前 1 小时放下手机、房间降到 18~20 度、别在床上刷视频，比硬躺着数羊有用。';
@@ -1107,6 +1123,9 @@ function analyzeDay(rec, dateStr){
 /* 含糖饮料：结合备注写的「为什么喝」，且和饮水数据一起看 */
 var SUGAR_REASONS=[
   { re:/不适|生病|发烧|低烧|感冒|喉咙|咽痛|吃药|药|脉动|电解质|补液|拉肚子|腹泻/,
+    /* 只是「身体不舒服」不够——必须备注里真的提到了喝什么，
+       否则会把「喉咙疼」误当成「为了补液才喝这杯」 */
+    need:/喝|奶茶|饮料|脉动|椰子|电解质|补液|水/,
     label:'生病补液',
     tip:'发烧出汗、胃口差都在丢水和电解质，这时候补液比控糖重要——这杯不算违规，好利索了再换回白水。' },
   { re:/困|提神|犯困|熬夜|加班|没睡好|好累|太累/, label:'提神',
@@ -1137,8 +1156,13 @@ function sugarAdviceText(rec, cups){
     }
   }
   for(var i=0;i<SUGAR_REASONS.length;i++){
-    if(SUGAR_REASONS[i].re.test(note)) return head+'（'+SUGAR_REASONS[i].label+'）——'+SUGAR_REASONS[i].tip;
+    if(!SUGAR_REASONS[i].re.test(note)) continue;
+    if(SUGAR_REASONS[i].need && !SUGAR_REASONS[i].need.test(note)) continue;
+    return head+'（'+SUGAR_REASONS[i].label+'）——'+SUGAR_REASONS[i].tip;
   }
+  /* 在生病、但备注没说为什么喝：这几天本来就不该算这笔账 */
+  if(/低烧|发烧|发热|感冒|咳嗽|喉咙|咽痛|鼻塞|流鼻涕|不舒服|不适|生病|吃药|疫苗/.test(note))
+    return head+'——生病这几天先别管它，水喝够、把病养好，好利索了再算这笔账。';
   if(rec.waterMl!=null&&rec.waterMl<1000)
     return head+'，白水只有 '+rec.waterMl+' ml——两件事要分开算：水照样得补到 1500 ml，饮料这边先减半。';
   return head+'——明天先把杯数减半，换成无糖茶或气泡水，口感差得没想象中大。';
@@ -1297,7 +1321,12 @@ function dayTip(rec){
 
   /* 3) 备注 × 数据：身体类放到最后统一说，这里只讲能落到处方上的 */
   var bodyIds=['sick','recover','period'];
-  var facs=a.facts.filter(function(x){ return bodyIds.indexOf(x.fact.id)<0; });
+  var facs=a.facts.filter(function(x){
+    if(bodyIds.indexOf(x.fact.id)>=0) return false;
+    /* 含糖饮料那段（第 4 步）已经讲过，这里别再重复一遍 */
+    if(a.sugar && x.fact.cat==='diet') return false;
+    return true;
+  });
   facs.slice(0,1).forEach(function(x){ t.push(x.text); });
 
   /* 4) 含糖饮料（有原因就结合原因，生病时算合理需求） */
@@ -2113,7 +2142,7 @@ function renderHome(){
       <div class="home-top">
         <div>
           <div class="greet">${greet}，今天是 ${fmtMD(today)}</div>
-          <div class="verdict" style="color:${crisisToday?'var(--t2)':color}">${crisisToday?'今天不算分，把这一天过完就好':todayVerdict(sc)}</div>
+          <div class="verdict" style="color:${crisisToday?'var(--t2)':color}">${crisisToday?'今天不算分，把这一天过完就好':todayVerdict(sc, rec)}</div>
         </div>
         ${(sc&&!crisisToday)?ringSVG(sc.total,color):''}
       </div>
