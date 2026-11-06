@@ -4,6 +4,30 @@
 
 **没有服务器、没有账号、没有埋点**，数据就在你本机：浏览器里存 localStorage，桌面版写本地 CSV，安卓版可导出 CSV。
 
+<p align="center">
+  <img src="docs/screenshots/mobile-home.png" width="23%" alt="今日">
+  <img src="docs/screenshots/mobile-log.png" width="23%" alt="记录">
+  <img src="docs/screenshots/mobile-trend.png" width="23%" alt="趋势">
+  <img src="docs/screenshots/mobile-report.png" width="23%" alt="周报">
+</p>
+<p align="center"><sub>手机上：今日 / 记录 / 趋势 / 周报</sub></p>
+
+<p align="center">
+  <img src="docs/screenshots/desktop-home.png" width="86%" alt="桌面版">
+</p>
+<p align="center"><sub>Windows 桌面版：左侧导航 + 双列布局，数据直接写桌面上的 CSV</sub></p>
+
+---
+
+## 和同类工具的区别
+
+自托管的健康/习惯记录工具（wger、Baby Buddy、Endurain 等）通常要装 Docker、跑数据库、开个端口给别人访问。这个不用：
+
+- **解压双击就能用**，不装 Node、不装数据库、不需要管理员权限
+- **数据是一个 CSV 文件**，在桌面上，能用 Excel 打开、能手改、能拷走，删掉软件也不会丢
+- **断网完全可用**，整个应用没有一行联网代码
+- 代码量很小：页面是**一个 163 KB 的 HTML**，没有构建步骤、没有 npm 依赖、没有 CDN
+
 ---
 
 ## 直接下载（不用编译）
