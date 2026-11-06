@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html data-page-node-id="dRpw9yvjIww6F8SHEcXHrz" lang="zh-CN">
-<head data-page-node-id="ZY3MZNiBNC2pqDl1vJ2m8q">
-<!-- 单文件内核：桌面版与安卓版共用这一份页面；数据存本机 localStorage / CSV，不联网 -->
-<meta data-page-node-id="uFwEza1RpQiemqInxcf3tZ" charset="UTF-8">
-<meta data-page-node-id="TyB4BYVXtcLGu1dzsJZmRS" content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
 <!-- 安卓 App 标记：CSS 一上来就按"App 内"排版，不用等原生注入，避免样式晚到一步 -->
 <script>
 (function(){
@@ -21,10 +20,12 @@
   document.addEventListener('DOMContentLoaded',mark);
 })();
 </script>
-<meta data-page-node-id="rAK5kxmXoDWszG5V9kcn1A" content="#10b981" name="theme-color">
-<title data-page-node-id="OWpssy0eOyNc8qDdoAECTW" data-pnid-children="t0wMlXot0YrApQtOZYLG7Z">健康 Buddy · 7天身体管理工作台</title>
-<!--pnid:E1WZC56pQ7z3rLYp7uVN18--><!-- 本工作台通过 WorkBuddy「资料库」skill 搭建、存储和部署：页面绑定资料库数据表「7天身体管理记录」，数据在线存储、双向同步 -->
-<style data-page-node-id="LwHmGBNkZshriV3rT7Ksaq" data-pnid-children="9rcsMC1kdSja8P4dl6lmU4">
+<meta content="#10b981" name="theme-color">
+<title>健康 Buddy · 7天身体管理工作台</title>
+<!-- 单文件内核：桌面版（Electron）与安卓版（Capacitor）共用这一份页面。
+     数据只存本机——桌面版读写桌面上的 CSV 文档，安卓版用 localStorage 并可导出 CSV。
+     无后端、无账号、无网络请求。 -->
+<style>
 :root{
   --green:#10b981; --green-d:#059669; --green-bg:#ecfdf5;
   --amber:#f59e0b; --red:#ef4444; --blue:#3b82f6;
@@ -338,58 +339,58 @@ input[type=range]{width:100%;accent-color:var(--green)}
 }
 </style>
 </head>
-<body data-page-node-id="8O3PMjpD8bRXzYtkdDJVKb">
-<div data-page-node-id="Ji77kpfwGJg3XZiL2PFLMC" id="app">
-  <header data-page-node-id="3i8enRvZMtjeqzqxrS54of" class="topbar">
-    <div data-page-node-id="y20YjhiLqvpKojQ6CvvzQm">
-      <div data-page-node-id="OjG0h5jWfECsF9iKQ5o4pt" class="logo"><!--pnid:73DctcDkM3uvpksJaiKO9s-->🌱 健康 Buddy</div>
-      <div data-page-node-id="YCYIaWARoM1dczzb9rah1h" class="tb-sub" id="topbar-range"></div>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div>
+      <div class="logo">🌱 健康 Buddy</div>
+      <div class="tb-sub" id="topbar-range"></div>
     </div>
-    <div data-page-node-id="QYOKl6WCQScgovdlA2nMDX" style="display:flex; align-items:center; gap:6px">
-      <div data-page-node-id="nRRXHuqOpsiDgwfEUaBSVd" class="tb-count" id="topbar-count"><!--pnid:Mhh8kn2qNwZfhvE8egAQoV-->0/7 天</div>
+    <div style="display:flex; align-items:center; gap:6px">
+      <div class="tb-count" id="topbar-count">0/7 天</div>
     </div>
   </header>
 
-  <main data-page-node-id="LXA9zHRIrC2xTAVv1a52MD">
-    <!--pnid:j7K6lhUhUs9losd7EyHL97--><!-- 首页 -->
-    <section data-page-node-id="lHfR1T6YkPkToaxPirhvYl" class="page active" id="page-home"><div data-page-node-id="wQb6vL6icmx1gWbjsMlOpa" data-sp-bindable="database" data-sp-database-id="jzThR0HIkYECaeIcJvLtcq" id="home-body"></div></section>
+  <main>
+    <!-- 首页 -->
+    <section class="page active" id="page-home"><div id="home-body"></div></section>
 
-    <!--pnid:5xsBtaiS4R3GZL4OHIfNG1--><!-- 记录页 -->
-    <section data-page-node-id="yhjTuwP8Svmlk4143cAtGp" class="page" id="page-log">
-      <div data-page-node-id="Hl6llLgD2i9pUUO6Umj6Zb" class="card">
-        <div data-page-node-id="ebiRBig9IhAiU3Sx2MxExK" class="card-title"><!--pnid:pD2l9bx7LYWDC37PfHDe4S-->记录哪一天 <span data-page-node-id="bl1i8jVxT5rjcPsphNIqiW" class="unit"><!--pnid:9q9z9H6WFm0JK249pxR96Z-->可补填最近 7 天，绿色小点代表已有记录</span></div>
-        <div data-page-node-id="MXDPrjjVrxu5QJXKC3gPj3" class="chips-scroll" id="date-chips"></div>
+    <!-- 记录页 -->
+    <section class="page" id="page-log">
+      <div class="card">
+        <div class="card-title">记录哪一天 <span class="unit">可补填最近 7 天，绿色小点代表已有记录</span></div>
+        <div class="chips-scroll" id="date-chips"></div>
       </div>
-      <div data-page-node-id="WEBfnUxSWXlIBr0Fw4tIsj" class="card">
-        <div data-page-node-id="yRB2Fn1QwfziU62vdTIXPT" class="card-title"><!--pnid:P30g8IF9MyjM89rYZRKFiF-->😴 睡眠</div>
-        <div data-page-node-id="k9Ag1PmIpR9ij1bde8T2Is" class="row2">
-          <div data-page-node-id="1IOK6tJrKfgOelzI8T6cbJ" class="field"><label data-page-node-id="sIG4S77FHcTTsJDiLhQG1Z"><!--pnid:CLNxLGWz8W2XQWUCCSHGB5-->昨晚入睡时间</label><input data-page-node-id="ESO164yMpKfITvSr3sfrJb" id="f-bed" type="time"></div>
-          <div data-page-node-id="dpOTAK4kaKsQoWS6eP9n7K" class="field"><label data-page-node-id="mPc5JL4nLHikEXG01U7MV9"><!--pnid:AtSu4vspHDrrzxDdQN2aA9-->今天起床时间</label><input data-page-node-id="T2hapef5w8dZY8jxIfjGo7" id="f-wake" type="time"></div>
+      <div class="card">
+        <div class="card-title">😴 睡眠</div>
+        <div class="row2">
+          <div class="field"><label>昨晚入睡时间</label><input id="f-bed" type="time"></div>
+          <div class="field"><label>今天起床时间</label><input id="f-wake" type="time"></div>
         </div>
-        <div data-page-node-id="O7bkwY8YDfcqe01sAncrAc" class="field">
-          <label data-page-node-id="sItq2jkwDYWd9LVsmFAMgV"><!--pnid:2RdRGdwjM8N4JmxBBJHfHE-->总睡眠时长（小时，含午休）</label>
-          <input data-page-node-id="hbAead6kthsNEhJ9q042SM" id="f-sleep" max="16" min="0" placeholder="填了入睡和起床会自动计算" step="0.1" type="number">
-          <div data-page-node-id="pRHKeOqipMypz2m11iogal" class="hint" id="f-sleep-auto"></div>
+        <div class="field">
+          <label>总睡眠时长（小时，含午休）</label>
+          <input id="f-sleep" max="16" min="0" placeholder="填了入睡和起床会自动计算" step="0.1" type="number">
+          <div class="hint" id="f-sleep-auto"></div>
         </div>
-        <div data-page-node-id="O7bkwY8YDfcqe01sAncrAc" class="field" style="margin-top:12px">
+        <div class="field" style="margin-top:12px">
           <label>午休 <span style="color:#9ca3af;font-weight:400">（有午睡习惯就填，单独算，不并入上面的夜间时长）</span></label>
           <div class="chips-inline" id="nap-chips"></div>
           <div class="nap-row"><input id="f-nap" max="180" min="0" placeholder="时长不固定？直接填分钟数" step="5" type="number"><span>分钟</span></div>
           <div class="hint" id="f-nap-hint">20~30 分钟最稳；超过 1 小时容易睡进深睡，醒来发闷，也会推迟当晚入睡</div>
         </div>
       </div>
-      <div data-page-node-id="6ZoZB33v7SZBgOC18rMtbx" class="card">
-        <div data-page-node-id="MS7PX8KavF4Lz3IUTNcwSW" class="card-title"><!--pnid:Wxu2ipqVusTm8GIuVZpitu-->🏃 运动 &amp; 💧 饮水</div>
-        <div data-page-node-id="nK433Y75yTaBSiQxoiyfHq" class="field">
-          <label data-page-node-id="zneW53BrNUdfyNZgKaUyOj"><!--pnid:8OB5PLTgPD6FWoRX2r5vxM-->今天运动了多久（分钟，没运动填 0）</label>
-          <input data-page-node-id="TxPaVijpDBJpatdvqaTkd8" id="f-exercise" max="600" min="0" placeholder="如 30" step="5" type="number">
-          <div data-page-node-id="PsSq1jB5HM842HYLvSJZFv" class="chips-inline" id="ex-chips"></div>
+      <div class="card">
+        <div class="card-title">🏃 运动 &amp; 💧 饮水</div>
+        <div class="field">
+          <label>今天运动了多久（分钟，没运动填 0）</label>
+          <input id="f-exercise" max="600" min="0" placeholder="如 30" step="5" type="number">
+          <div class="chips-inline" id="ex-chips"></div>
         </div>
-        <div data-page-node-id="Tq3BXT4nezLUKYww5AW7YD" class="field">
-          <label data-page-node-id="wPVOhGfBHeUsNbyNbRSJIF"><!--pnid:2zxr4xvmlooUXKQZVA5dEt-->今天喝了多少水 <span style="color:#9ca3af;font-weight:400">（只算白水 / 淡茶，奶茶饮料不算）</span></label>
-          <div data-page-node-id="WvNRS5SAjjCQWDhlseL6Vf" class="water-val" id="f-water-val"><!--pnid:kS4c50YR96BoyAReahRi21-->0 ml</div>
-          <input data-page-node-id="j4KGo2ecWHG2S490A4fD8j" id="f-water" max="3000" min="0" step="100" type="range" value="0">
-          <div data-page-node-id="2byQl4J5OnEvM5ZgCMqFBY" class="hint"><!--pnid:qhih4X1vPHys6YoYoP76FY-->滑动选择，参考目标 1500 ml / 天</div>
+        <div class="field">
+          <label>今天喝了多少水 <span style="color:#9ca3af;font-weight:400">（只算白水 / 淡茶，奶茶饮料不算）</span></label>
+          <div class="water-val" id="f-water-val">0 ml</div>
+          <input id="f-water" max="3000" min="0" step="100" type="range" value="0">
+          <div class="hint">滑动选择，参考目标 1500 ml / 天</div>
         </div>
         <div class="field" style="margin-top:12px">
           <label>今天喝了含糖饮料吗 <span style="color:#9ca3af;font-weight:400">（奶茶 / 可乐 / 果汁，单独记，不并入上面的水量）</span></label>
@@ -397,14 +398,14 @@ input[type=range]{width:100%;accent-color:var(--green)}
           <div class="hint">喝水够但奶茶多，是两件事：水照样算分，含糖饮料另做提醒</div>
         </div>
       </div>
-      <div data-page-node-id="WgtSZ32IfBaNW1QNRZ2gET" class="card">
-        <div data-page-node-id="KTwrxXLs5925xI4qnS9OzQ" class="card-title"><!--pnid:dAKYgztItNqLc2yJTsBHVb-->🍚 三餐 &amp; 饮食</div>
-        <div data-page-node-id="c912r6NCZteo2aA7XaoSFW" class="field">
-          <label data-page-node-id="ItivDKWryB4iTPH6QSfaLN"><!--pnid:y1ssTfCCHWXF9OMUy5atIb-->今天吃了哪几顿正餐（点选）</label>
-          <div data-page-node-id="zLBlsTngTeHYKnegJz5YPR" class="meal-row">
-            <button data-page-node-id="fK3MoGYonIk0Z5yiGYbcqv" id="meal-0" type="button"><!--pnid:VJcsFU7P8dFuSWHD93bzhs-->🍳 早餐</button>
-            <button data-page-node-id="hPYnPG8X5mXp7xKphs0tKh" id="meal-1" type="button"><!--pnid:EvUaBVLHV8hM2J2WsYAf1x-->🍚 午餐</button>
-            <button data-page-node-id="s0tQfRTyY733dSnHNVoi5P" id="meal-2" type="button"><!--pnid:O0SOHZgrnUqOnwY6FVPZIj-->🍜 晚餐</button>
+      <div class="card">
+        <div class="card-title">🍚 三餐 &amp; 饮食</div>
+        <div class="field">
+          <label>今天吃了哪几顿正餐（点选）</label>
+          <div class="meal-row">
+            <button id="meal-0" type="button">🍳 早餐</button>
+            <button id="meal-1" type="button">🍚 午餐</button>
+            <button id="meal-2" type="button">🍜 晚餐</button>
           </div>
           <div class="meal-detail">
             <div class="md-row"><span class="md-label">早饭吃了什么</span><input id="f-meal-note-0" maxlength="20" placeholder="可选，如 包子豆浆" type="text"></div>
@@ -412,56 +413,56 @@ input[type=range]{width:100%;accent-color:var(--green)}
             <div class="md-row"><span class="md-label">晚饭吃了什么</span><input id="f-meal-note-2" maxlength="20" placeholder="可选，如 泡面加蛋" type="text"></div>
           </div>
         </div>
-        <div data-page-node-id="jArdyNrcSmthBqQlrEtZef" class="field">
-          <label data-page-node-id="5no1LlHDRaEXgcIICyJmeJ"><!--pnid:dpSDKWSnRMgW6UCjrVI33K-->今天吃得比较多的是哪类</label>
-          <div data-page-node-id="v1W3aczbvxopW4iO40P0MG" class="chips-inline" id="food-chips"></div>
+        <div class="field">
+          <label>今天吃得比较多的是哪类</label>
+          <div class="chips-inline" id="food-chips"></div>
         </div>
       </div>
-      <div data-page-node-id="n8FL45IIuEMdtY2LwLkSM2" class="card">
-        <div data-page-node-id="Eng48uKGcQvvlW1oJtXt9b" class="card-title"><!--pnid:F9VcECCLQYbb4PnO6fVnfH-->🪑 久坐 &amp; 状态自评</div>
-        <div data-page-node-id="vVNUSxIvgugKIM8NeiOUvx" class="field"><label data-page-node-id="L5nJkGGpS3wnPKZMWYIEKV"><!--pnid:IfpO27xZHtaZWw2JsOr4HP-->今天累计久坐多久（小时）</label><input data-page-node-id="h4NWJ66hgfE9uvdKg4FMYh" id="f-sit" max="18" min="0" placeholder="如 7.5" step="0.5" type="number"></div>
-        <div data-page-node-id="vrv9xgBun7geTnKilHuLy9" class="field"><label data-page-node-id="iGJL7MPNQpCY2Z1diFrViR"><!--pnid:z1HJVbwRZOtxKAab5GG1Lz-->今日精神状态</label><div data-page-node-id="nXxrGz6ezTEbnkIOdqxLH2" class="sel-row" id="mood-btns"></div></div>
-        <div data-page-node-id="SI4G8eGe77cwDAcDQpNN4x" class="field"><label data-page-node-id="sqiPkGiYhmK4TZ5ljT5JS2"><!--pnid:iUO2ETwOv6XZuapJVcX0Qy-->今日身体状态自评</label><div data-page-node-id="z0c4wIuV5WI4WY7bBEzBzj" class="sel-row" id="body-btns"></div></div>
-        <div data-page-node-id="7INsWHNkq4GNcDZoBUrZa9" class="field"><label data-page-node-id="u6zQ86W4bDXXuQll3gYZ30"><!--pnid:g9kxTlPE1BPo0TvsJMKKUh-->备注（可选）</label><input data-page-node-id="E1SmSh3vOsZuCCHSXWG482" id="f-note" maxlength="40" placeholder="如：考试周，没空运动" type="text"></div>
+      <div class="card">
+        <div class="card-title">🪑 久坐 &amp; 状态自评</div>
+        <div class="field"><label>今天累计久坐多久（小时）</label><input id="f-sit" max="18" min="0" placeholder="如 7.5" step="0.5" type="number"></div>
+        <div class="field"><label>今日精神状态</label><div class="sel-row" id="mood-btns"></div></div>
+        <div class="field"><label>今日身体状态自评</label><div class="sel-row" id="body-btns"></div></div>
+        <div class="field"><label>备注（可选）</label><input id="f-note" maxlength="40" placeholder="如：考试周，没空运动" type="text"></div>
       </div>
       <div class="check-box" id="form-check" style="display:none"></div>
-      <div data-page-node-id="9IVj4Tz0H5cE17aaX3hgtI" class="btn-col">
-        <button data-page-node-id="lXdZPawacNsTwUTqsuZXbq" class="btn primary big" id="btn-save"><!--pnid:VG8VvWIbMZNXEnIJ9F6BVW-->保存这一天</button>
-        <button data-page-node-id="b7gDhP3MwffeXsabm33LJE" class="btn ghost" id="btn-clear-day"><!--pnid:1QxinelHYqFmMUf59NVtIY-->清空这天的记录</button>
+      <div class="btn-col">
+        <button class="btn primary big" id="btn-save">保存这一天</button>
+        <button class="btn ghost" id="btn-clear-day">清空这天的记录</button>
       </div>
       <div class="card" id="day-review" style="display:none"></div>
-      <div data-page-node-id="1aHa7KrhDOfS7HgbwEq9a1" class="card">
-        <div data-page-node-id="Xot95JYjgzpljvNMgG8uQa" class="card-title"><!--pnid:uQbpv6QmLZRAQ7g6qqCSBs-->🔄 CSV 数据导入 / 导出 <span data-page-node-id="RqMgwvKWpSmPmaJRtZUZxV" class="unit"><!--pnid:aPVXwHjmKhqyd0q1SX9S9D-->一次可导入多天，导入后自动算分</span></div>
-        <div data-page-node-id="dQihDJ6hLp2kFWTgTJHHHb" class="hint"><!--pnid:qrtbaFDMmGvuTfA04O5mzc-->表头 14 列（括号里就是单位），列顺序不限、缺列可省：日期(必填，YYYY-MM-DD)、入睡时间 / 起床时间(24 小时制)、睡眠时长(小时)、运动时长(分钟)、饮水量(ml)、早餐 / 午餐 / 晚餐(吃了填「是」，没吃填「否」)、主要食物(食堂 / 外卖 / 自己做 / 快餐 / 均衡)、久坐时长(小时)、精神状态与身体自评(1-5)、备注、追问(可选，形如 sleep_short=work;water=forget，点按钮答会自动写入，一般不用手填)。三餐三列按「吃了填是、没吃填否」填，三列都填才算完整；如果这天压根没记三餐，三列全留空即可——只有三列全空才会被当作「没记三餐」、不参与评分。</div>
-        <div data-page-node-id="Qrmkru0pOS4dDsKQsAf8xq" class="btn-row" style="margin-top:10px">
-          <button data-page-node-id="w2pAyjDt7ZlEXM1h0JOUiL" class="btn primary" id="btn-csv-import" type="button"><!--pnid:HkwQAMwo4VOUFIc2NirgTU-->导入 CSV 文件</button>
-          <button data-page-node-id="0M0wFmPkdIDXv4sFhn0ltr" class="btn ghost" id="btn-csv-export" type="button"><!--pnid:J3o7Na802s6LvIaIdQB7GD-->导出全部记录</button>
+      <div class="card">
+        <div class="card-title">🔄 CSV 数据导入 / 导出 <span class="unit">一次可导入多天，导入后自动算分</span></div>
+        <div class="hint">表头 14 列（括号里就是单位），列顺序不限、缺列可省：日期(必填，YYYY-MM-DD)、入睡时间 / 起床时间(24 小时制)、睡眠时长(小时)、运动时长(分钟)、饮水量(ml)、早餐 / 午餐 / 晚餐(吃了填「是」，没吃填「否」)、主要食物(食堂 / 外卖 / 自己做 / 快餐 / 均衡)、久坐时长(小时)、精神状态与身体自评(1-5)、备注、追问(可选，形如 sleep_short=work;water=forget，点按钮答会自动写入，一般不用手填)。三餐三列按「吃了填是、没吃填否」填，三列都填才算完整；如果这天压根没记三餐，三列全留空即可——只有三列全空才会被当作「没记三餐」、不参与评分。</div>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn primary" id="btn-csv-import" type="button">导入 CSV 文件</button>
+          <button class="btn ghost" id="btn-csv-export" type="button">导出全部记录</button>
         </div>
-        <button data-page-node-id="QZPvnftYTKyYuUA5KcL8Dm" class="btn ghost" id="btn-csv-template" type="button" style="margin-top:8px"><!--pnid:VwddtBAZFWqegPbaDOu4DB-->下载 CSV 模板</button>
+        <button class="btn ghost" id="btn-csv-template" type="button" style="margin-top:8px">下载 CSV 模板</button>
         <div class="hint" id="csv-path" style="margin-top:6px;color:#0f766e;word-break:break-all;display:none"></div>
-        <input data-page-node-id="PtHPFOhBoOozuCmhxAjVxV" accept=".csv,text/csv" id="csv-file" type="file" style="display:none">
-        <div data-page-node-id="puWgCv5VqWI4QOA6oTrhRC" class="hint" id="csv-status"></div>
+        <input accept=".csv,text/csv" id="csv-file" type="file" style="display:none">
+        <div class="hint" id="csv-status"></div>
         <div class="hint" id="desk-status" style="margin-top:2px;color:#059669"></div>
       </div>
     </section>
 
-    <!--pnid:m9jz1fDOQ457JMNqZDE5xk--><!-- 趋势页 -->
-    <section data-page-node-id="dNC8QY0MSLA6xLmvUnlPiA" class="page" id="page-trend"><div data-page-node-id="FmFp1AIVORCHHNWZJQsAby" data-sp-bindable="database" data-sp-database-id="jzThR0HIkYECaeIcJvLtcq" id="trend-body"></div></section>
+    <!-- 趋势页 -->
+    <section class="page" id="page-trend"><div id="trend-body"></div></section>
 
-    <!--pnid:ZjFaEARji3n5L96OA0SBg5--><!-- 周报页 -->
-    <section data-page-node-id="RSvoRLLiPYnTHDRsCASP4m" class="page" id="page-report"><div data-page-node-id="qqCJOJwTOmXHz37EA3iBuz" data-sp-bindable="database" data-sp-database-id="jzThR0HIkYECaeIcJvLtcq" id="report-body"></div></section>
+    <!-- 周报页 -->
+    <section class="page" id="page-report"><div id="report-body"></div></section>
   </main>
 
-  <nav data-page-node-id="HhVJ1xfCsUwSEAmea0B5FQ" class="tabbar">
-    <button data-page-node-id="lkPzPfpGM0gaIuCiRs1qUw" class="on" data-tab="home"><!--pnid:HaXAn3E0lbbvLuJNFYexiz-->🏠<span data-page-node-id="SRr1vsoG8fuph8GfpEXGwq"><!--pnid:GF8HMkZ6y0yrhKVoVBgq1U-->今日</span></button>
-    <button data-page-node-id="hB52bFfAWX8ZNt6LDgNNIM" data-tab="log"><!--pnid:K7TirLIN8tPmEtr9q1nyTP-->📝<span data-page-node-id="hHuBZ0Iwd8HL4jaMN37ONs"><!--pnid:G0XMDYsX6ImmjU8BPvOK4a-->记录</span></button>
-    <button data-page-node-id="AyVVb4mnKlF27Ji9y3lr7G" data-tab="trend"><!--pnid:zuy2FeVmNhv4VIjNCKrVYU-->📈<span data-page-node-id="apQiPCWhP867zskYmH9QRU"><!--pnid:yHw2pZaTXHGFJhvbsWMdTO-->趋势</span></button>
-    <button data-page-node-id="FSQ6eFfDaUfcgYSnPFvYYq" data-tab="report"><!--pnid:W2gYIBhdGUUrVoP4k4sDig-->📋<span data-page-node-id="cF1zXslalSoISvVKAmLHD8"><!--pnid:XL7FgIjbDftcnmttyoicvb-->周报</span></button>
+  <nav class="tabbar">
+    <button class="on" data-tab="home">🏠<span>今日</span></button>
+    <button data-tab="log">📝<span>记录</span></button>
+    <button data-tab="trend">📈<span>趋势</span></button>
+    <button data-tab="report">📋<span>周报</span></button>
   </nav>
-  <div data-page-node-id="cYyypmXR7WwwLe530P3cnD" id="toast"></div>
+  <div id="toast"></div>
 </div>
 
-<script data-page-node-id="FuYhUIkP7r2r5DAJXnD16q" data-pnid-children="GLGDHu1hfp0xN5snTLMQkU">
+<script>
 /* ================= 工具 ================= */
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
