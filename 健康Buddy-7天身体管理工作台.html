@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html data-page-node-id="dRpw9yvjIww6F8SHEcXHrz" lang="zh-CN">
 <head data-page-node-id="ZY3MZNiBNC2pqDl1vJ2m8q">
-<!-- 本地导出版：已移除平台注入脚本，数据保存在本机浏览器 localStorage；如需云端同步请使用资料库在线页面 -->
+<!-- 单文件内核：桌面版与安卓版共用这一份页面；数据存本机 localStorage / CSV，不联网 -->
 <meta data-page-node-id="uFwEza1RpQiemqInxcf3tZ" charset="UTF-8">
 <meta data-page-node-id="TyB4BYVXtcLGu1dzsJZmRS" content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
 <!-- 安卓 App 标记：CSS 一上来就按"App 内"排版，不用等原生注入，避免样式晚到一步 -->
@@ -114,7 +114,6 @@ html.hb-native,html.hb-native body{height:100%;overflow:hidden}
 .btn.primary.big{padding:14px;font-size:16px}
 .btn.primary:active{background:var(--green-d)}
 .btn.ghost{background:#fff;color:var(--green-d);border:1px solid var(--green);width:100%}
-.btn.danger{background:#fff;color:var(--red);border:1px solid #fca5a5;flex:1}
 .btn-col{display:flex;flex-direction:column;gap:8px;margin:2px 0 10px}
 .btn-row{display:flex;gap:8px}
 .btn-row .btn{flex:1}
@@ -347,7 +346,6 @@ input[type=range]{width:100%;accent-color:var(--green)}
       <div data-page-node-id="YCYIaWARoM1dczzb9rah1h" class="tb-sub" id="topbar-range"></div>
     </div>
     <div data-page-node-id="QYOKl6WCQScgovdlA2nMDX" style="display:flex; align-items:center; gap:6px">
-      <span data-page-node-id="aQx5pKPqxuXlnYreuIRSJi" id="sync-badge" style="background:rgba(255,255,255,.22); border-radius:999px; padding:4px 10px; font-size:11px; font-weight:600; color:#fff; white-space:nowrap"><!--pnid:3tUfH03Xr9Tbh4PKsx8xY1-->同步中…</span>
       <div data-page-node-id="nRRXHuqOpsiDgwfEUaBSVd" class="tb-count" id="topbar-count"><!--pnid:Mhh8kn2qNwZfhvE8egAQoV-->0/7 天</div>
     </div>
   </header>
@@ -495,18 +493,6 @@ function clearDirty(){
   if(b){ b.textContent='保存这一天'; b.style.background=''; }
 }
 function clearDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
-/* ============ 在线数据层（资料库 SDK，实现跨设备同步） ============
- * 优先使用 window.__SMART_PAGE__.database（资料库注入）；不存在则降级 localStorage。
- * 在线模式：每次保存写入资料库 + 本地缓存，读取时以内存中的在线快照为准；
- * 订阅 onUpdated 实现「别人/其他设备改动 → 本页实时刷新」的双向同步。
- */
-var DATABASE_ID = 'jzThR0HIkYECaeIcJvLtcq';
-var db = (typeof window!=='undefined' && window.__SMART_PAGE__ && window.__SMART_PAGE__.database) || null;
-var onlineMode = !!db;      // true=在线同步, false=纯本地
-var syncState = onlineMode ? 'connecting' : 'offline'; // connecting|synced|offline
-var onlineDirty = false;          // 本地有待上传的修改
-var onlineLoadResolve = null;
-var onlineLoaded = new Promise(function(res){ onlineLoadResolve = res; });
 const MOOD_EMOJI = ['😪','😕','😐','🙂','😄'];
 const BODY_LABEL = ['很差','较差','一般','不错','很好'];
 const FOOD_TYPES = ['食堂为主','外卖为主','自己做饭','快餐居多','均衡搭配'];
@@ -538,150 +524,7 @@ function loadRecords(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || 
 function saveRecords(r){ try{ localStorage.setItem(LS_KEY, JSON.stringify(r)); }catch(e){} }
 let records = loadRecords();
 
-/* ---- 在线数据同步（资料库 SDK） ---- */
-function setSyncState(s){ syncState=s; updateSyncBadge(); }
-function updateSyncBadge(){
-  var el=document.getElementById('sync-badge');
-  if(!el) return;
-  var map={ synced:['✓ 已同步','#059669'], connecting:['同步中…','#d97706'], offline:['本地模式','#9ca3af'] };
-  var m=map[syncState]||map.offline;
-  el.textContent=m[0]; el.style.background=m[1];
-}
-function fieldValue(row, name){ return (row&&row[name]!=null)?row[name]:null; }
-function rowToRecord(r){
-  if(!r) return null;
-  var rec={};
-  var d=fieldValue(r,'日期'); if(d) rec['_date']=String(d).slice(0,10);
-  if(fieldValue(r,'入睡时间')!=null) rec.bedTime=fieldValue(r,'入睡时间');
-  if(fieldValue(r,'起床时间')!=null) rec.wakeTime=fieldValue(r,'起床时间');
-  if(fieldValue(r,'睡眠时长')!=null) rec.sleepHours=Number(fieldValue(r,'睡眠时长'));
-  if(fieldValue(r,'午休')!=null) rec.napMin=Number(fieldValue(r,'午休'));
-  if(fieldValue(r,'运动时长')!=null) rec.exerciseMin=Number(fieldValue(r,'运动时长'));
-  if(fieldValue(r,'饮水量')!=null) rec.waterMl=Number(fieldValue(r,'饮水量'));
-  var meals=[]; meals.push(!!fieldValue(r,'早餐')); meals.push(!!fieldValue(r,'午餐')); meals.push(!!fieldValue(r,'晚餐'));
-  if(meals.some(Boolean)) rec.meals=meals;
-  if(fieldValue(r,'主要食物')!=null) rec.foodType=fieldValue(r,'主要食物');
-  var mnc=[fieldValue(r,'早餐吃了什么'),fieldValue(r,'午餐吃了什么'),fieldValue(r,'晚餐吃了什么')];
-  if(mnc.some(function(v){ return v!=null && v!==''; })) rec.mealNotes=mnc.map(function(v){ return v==null?'':String(v); });
-  if(fieldValue(r,'含糖饮料')!=null) rec.sugarCups=Number(fieldValue(r,'含糖饮料'));
-  if(fieldValue(r,'久坐时长')!=null) rec.sitHours=Number(fieldValue(r,'久坐时长'));
-  if(fieldValue(r,'精神状态')!=null) rec.mood=Number(fieldValue(r,'精神状态'));
-  if(fieldValue(r,'身体自评')!=null) rec.bodyScore=Number(fieldValue(r,'身体自评'));
-  if(fieldValue(r,'备注')) rec.note=fieldValue(r,'备注');
-  if(fieldValue(r,'追问')){ var qaO=qaFromText(fieldValue(r,'追问')); if(qaO) rec.qa=qaO; }
-  rec['_rid']=r._id||null;
-  return rec;
-}
-function loadAllOnline(){
-  if(!db){ setSyncState('offline'); onlineLoadResolve(); return; }
-  setSyncState('connecting');
-  db.query({ databaseId:DATABASE_ID, pageSize:200 })
-    .then(function(r){
-      var acc=r.results||[];
-      var next=r.nextCursor;
-      var cursor=next;
-      var guard=0;
-      var loop=function(){
-        guard++;
-        if(guard>50){ finish(); return; }
-        if(r.hasMore && next && (r.results||[]).length){
-          db.query({ databaseId:DATABASE_ID, pageSize:200, startCursor:cursor })
-            .then(function(r2){
-              acc=acc.concat(r2.results||[]); next=r2.nextCursor; cursor=next; r=r2; loop();
-            }).catch(function(){ finish(); });
-        } else { finish(); }
-      };
-      var finish=function(){
-        records={};
-        acc.forEach(function(row){
-          var rec=rowToRecord(row); if(rec && rec._date) records[rec._date]=rec;
-        });
-        saveRecords(records);
-        onlineDirty=false; setSyncState('synced'); onlineLoadResolve();
-      };
-      loop();
-    })
-    .catch(function(err){ console.error('[database] 在线加载失败，降级本地:', err); setSyncState('offline'); onlineDirty=true; onlineLoadResolve(); });
-}
-function recToProperties(rec, date, forceMeals){
-  var p={};
-  p['日期']={ date: date+'T00:00:00Z' };
-  if(rec.bedTime!=null) p['入睡时间']={ text: rec.bedTime };
-  if(rec.wakeTime!=null) p['起床时间']={ text: rec.wakeTime };
-  if(rec.sleepHours!=null) p['睡眠时长']={ number: rec.sleepHours };
-  if(rec.napMin!=null) p['午休']={ number: rec.napMin };
-  if(rec.exerciseMin!=null) p['运动时长']={ number: rec.exerciseMin };
-  if(rec.waterMl!=null) p['饮水量']={ number: rec.waterMl };
-  /* 三餐只有「真的记录过」才写进表：没填过就留空，避免「没记录」被写成「三顿都没吃」而按 0 分算 */
-  if(rec.meals || forceMeals){
-    var meals=rec.meals||[false,false,false];
-    p['早餐']={ checkbox: !!meals[0] }; p['午餐']={ checkbox: !!meals[1] }; p['晚餐']={ checkbox: !!meals[2] };
-  }
-  if(rec.mealNotes){
-    if(rec.mealNotes[0]) p['早餐吃了什么']={ text: rec.mealNotes[0] };
-    if(rec.mealNotes[1]) p['午餐吃了什么']={ text: rec.mealNotes[1] };
-    if(rec.mealNotes[2]) p['晚餐吃了什么']={ text: rec.mealNotes[2] };
-  }
-  if(rec.sugarCups!=null) p['含糖饮料']={ number: rec.sugarCups };
-  if(rec.foodType!=null) p['主要食物']={ select: rec.foodType };
-  if(rec.sitHours!=null) p['久坐时长']={ number: rec.sitHours };
-  if(rec.mood!=null) p['精神状态']={ number: rec.mood };
-  if(rec.bodyScore!=null) p['身体自评']={ number: rec.bodyScore };
-  if(rec.note) p['备注']={ text: rec.note };
-  return p;
-}
-function syncDayOnline(date, rec){
-  if(!db) return Promise.resolve(false);
-  setSyncState('connecting');
-  return db.query({ databaseId:DATABASE_ID, filter:{ property:{ property:'日期', date:{ equals: date } } }, pageSize:5 })
-    .then(function(qr){
-      var rows=(qr&&qr.results)||[];
-      var existing=rows[0];
-      var props=recToProperties(rec, date, !!existing);
-      if(existing && existing._id){
-        return db.updateRecord({ databaseId:DATABASE_ID, recordId:existing._id, properties:props })
-          .then(function(){ setSyncState('synced'); return true; });
-      }
-      return db.addRecord({ databaseId:DATABASE_ID, properties:props })
-        .then(function(){ setSyncState('synced'); return true; });
-    })
-    .catch(function(err){ console.error('[database] 在线保存失败:', err); setSyncState('offline'); return false; });
-}
-function subscribeOnline(){
-  if(!db || typeof db.onUpdated!=='function') return;
-  var timer=null;
-  db.onUpdated(function(payload){
-    var ids=(payload&&payload.databaseIds)||[];
-    if(ids.indexOf(DATABASE_ID)===-1) return;
-    if(timer) clearTimeout(timer);
-    timer=setTimeout(function(){ timer=null; reloadAllQuiet(); }, 300);
-  });
-}
 var reloadTimer=null;
-function reloadAllQuiet(){
-  if(reloadTimer) return; reloadTimer=true;
-  if(!db){ setSyncState('offline'); reloadTimer=false; return; }
-  db.query({ databaseId:DATABASE_ID, pageSize:200 })
-    .then(function(r){
-      var acc=(r.results||[]).slice(); var next=r.nextCursor; var cursor=next;
-      var walk=function(){
-        if(r.hasMore && next && cursor && (r.results||[]).length){
-          db.query({ databaseId:DATABASE_ID, pageSize:200, startCursor:cursor })
-            .then(function(r2){ acc=acc.concat(r2.results||[]); next=r2.nextCursor; cursor=next; r=r2; walk(); })
-            .catch(function(){ finishReload(acc); });
-        } else finishReload(acc);
-      };
-      var finishReload=function(acc2){
-        var merged={}; acc2.forEach(function(row){ var rec=rowToRecord(row); if(rec&&rec._date) merged[rec._date]=rec; });
-        // 保留本地尚未同步成功的修改
-        Object.keys(records).forEach(function(k){ if(onlineDirty && !merged[k]) merged[k]=records[k]; });
-        records=merged; saveRecords(records); setSyncState('synced');
-        currentKey=fmtDate(new Date()); refreshAll(); reloadTimer=false;
-      };
-      walk();
-    })
-    .catch(function(){ setSyncState('offline'); reloadTimer=false; });
-}
 let currentKey = fmtDate(new Date());
 let formState = { meals:[false,false,false], foodType:null, mood:0, body:0, sugar:0, mealsTouched:false, nap:0 };
 let formDirty = false;   /* 表单有改动但还没保存 */
@@ -941,15 +784,6 @@ function noteFactsOf(rec, prevRec){
   });
   return out;
 }
-/* 兼容旧调用：只取文字 */
-function noteTagsOf(text){
-  if(!text) return [];
-  return NOTE_FACTS.filter(function(f){ return f.re.test(String(text)); });
-}
-function noteTips(textArr, limit){
-  var rec={ note:textArr };
-  return noteFactsOf(rec, null).slice(0, limit||1).map(function(x){ return x.text; });
-}
 
 /* ---------- 归因：这天在每个维度丢了多少分 ---------- */
 function dayDeficit(rec){
@@ -962,18 +796,6 @@ function dayDeficit(rec){
     if(lost>0) out.push({ dim:k, lost:lost, got:s.parts[k], max:DIM_MAX[k] });
   }
   return out.sort(function(a,b){ return b.lost-a.lost; });
-}
-/* 一周累计各维度丢分 */
-function weekDeficit(filled){
-  var acc={};
-  filled.forEach(function(f){
-    dayDeficit(f.rec).forEach(function(d){
-      acc[d.dim]=acc[d.dim]||{ dim:d.dim, lost:0, days:0 };
-      acc[d.dim].lost+=d.lost; acc[d.dim].days++;
-    });
-  });
-  return Object.keys(acc).map(function(k){ return acc[k]; })
-    .sort(function(a,b){ return b.lost-a.lost; });
 }
 
 /* ---------- 处方：给剂量，不给口号 ---------- */
@@ -1167,7 +989,6 @@ function sugarAdviceText(rec, cups){
     return head+'，白水只有 '+rec.waterMl+' ml——两件事要分开算：水照样得补到 1500 ml，饮料这边先减半。';
   return head+'——明天先把杯数减半，换成无糖茶或气泡水，口感差得没想象中大。';
 }
-function sugarAdvice(rec){ return (rec&&rec.sugarCups>0)?sugarAdviceText(rec, rec.sugarCups):null; }
 
 /* ---------- 身体状态：用来调节其他建议的口径 ---------- */
 function bodyStateOf(rec, facts){
@@ -1195,7 +1016,6 @@ var BODY_TIP={
  *   · 一旦备注里出现自伤/轻生的字眼，其余所有建议全部让位，直接给热线。
  * 热线只写国家卫健委统一号码：12356（2025-05-01 起全国开通，24 小时、免费、匿名）。
  */
-var MIND_HOTLINE = '12356';
 var CRISIS_RE = /不想活|活着没意思|没意思活|自杀|自残|轻生|想消失|结束自己|撑不下去|撑不住|活着好累|没有意义|一了百了/;
 
 function mindLevel(rec, dateStr){
@@ -1663,7 +1483,6 @@ function answerQa(date, id, val){
     records[date]=rec;
     saveRecords(records);
     try{ if(typeof deskSyncDay==='function') deskSyncDay(date); }catch(e){}
-    if(onlineMode){ try{ syncDayOnline(date, rec); }catch(e){} }
     try{
       if(document.getElementById('page-log').classList.contains('active')) renderDayReview();
       else refreshAll();
@@ -1679,7 +1498,6 @@ function answerQa(date, id, val){
   records[date]=rec;
   saveRecords(records);
   try{ if(typeof deskSyncDay==='function') deskSyncDay(date); }catch(e){}
-  if(onlineMode){ try{ syncDayOnline(date, rec); }catch(e){} }
   /* 在记录页只重画回顾区，避免把还没保存的表单重置掉 */
   try{
     if(document.getElementById('page-log').classList.contains('active')) renderDayReview();
@@ -2516,16 +2334,7 @@ function saveDay(){
   deskSyncDay(currentKey);
   clearDraft();
   clearDirty();
-  if(onlineMode){
-    onlineDirty=true;
-    syncDayOnline(currentKey, rec).then(function(ok){
-      if(ok){ onlineDirty=false; }
-      else { setSyncState('offline'); }
-    });
-    toast('保存中…');
-  } else {
-    toast(DESK ? '已保存 ✓ 已写入文档' : '已保存 ✓');
-  }
+  toast(DESK ? '已保存 ✓ 已写入文档' : '已保存 ✓');
   updateTopbar();
   setTimeout(()=>switchTab('home'),550);
 }
@@ -2904,21 +2713,7 @@ function applyImport(recMap, badCount, silent, allFalseMeals){
   if(issueDays) head+='；'+issueDays+' 天数据需要核对'+(errDays?('（'+errDays+' 天有超出范围的值，那几天评分会算错）'):'')+'，记录页这几天会有橙色圆点，周报里也能一键去改';
   else head+='，数值检查通过';
   if(allFalseMeals) head+='；其中 '+allFalseMeals+' 天三餐列都是 FALSE/否/0，已按「没记三餐」处理（真要记成没吃，请在记录页勾选后保存）';
-  if(onlineMode && db){
-    setCsvStatus(head+'，正在同步到云端…');
-    var chain=Promise.resolve(), done=0, fail=0;
-    dates.forEach(function(d){
-      chain=chain.then(function(){ return syncDayOnline(d, records[d]); })
-        .then(function(ok){ if(ok) done++; else fail++; });
-    });
-    chain.then(function(){
-      onlineDirty=false;
-      setCsvStatus(head+' · 云端已同步 '+done+' 天'+(fail?('，失败 '+fail+' 天'):''));
-      refreshAll();
-    });
-  }else{
-    setCsvStatus(head+' · 本地模式已保存');
-  }
+  setCsvStatus(head+' · 已保存');
   return {ok:true, days:dates.length, inWindow:inWin, overwritten:existing};
 }
 function ingestCSVText(text, silent){
@@ -3250,14 +3045,10 @@ function init(){
   $('#btn-save').onclick=saveDay;
   $('#btn-clear-day').onclick=()=>{
     if(records[currentKey]&&confirm(`确定清空 ${currentKey} 的记录吗？`)){
-      const rid=records[currentKey]._rid;
       delete records[currentKey];
       saveRecords(records);
       deskDropDay(currentKey);
       clearDraft();
-      if(onlineMode && db && rid){
-        db.deleteRecord({ databaseId:DATABASE_ID, recordId:rid }).catch(function(){});
-      }
       loadForm(currentKey);
       renderDateChips();
       updateTopbar();
@@ -3279,15 +3070,8 @@ function init(){
   };
   $('#btn-csv-export').onclick=exportRecordsCSV;
   $('#btn-csv-template').onclick=downloadTemplateCSV;
-  updateSyncBadge();
   deskBootSync();
-  onlineLoaded.then(function(){ switchTab('home'); });
-  if(onlineMode){
-    loadAllOnline();
-    subscribeOnline();
-  } else {
-    switchTab('home');
-  }
+  switchTab('home');
 }
 init();
 </script>
