@@ -6,15 +6,16 @@
 
 ---
 
-## 三种形态
+## 两种形态
 
 | 形态 | 怎么用 | 技术 |
 |---|---|---|
-| 网页版 | 双击 `健康Buddy-7天身体管理工作台.html` 直接用 | 单文件，零依赖 |
 | 桌面版（Windows） | 解压后运行 `HealthBuddy.exe` | Electron |
-| 安卓版 | 安装 `健康Buddy-安卓版-v1.2.10.apk` | Capacitor |
+| 安卓版 | 安装 `健康Buddy-安卓版-v1.2.15.apk` | Capacitor |
 
-三端是**同一份页面**，只是外壳不同。桌面版多一个「读写本地 CSV」的能力，安卓版能把 CSV 导到手机的 `Documents/健康Buddy` 并调系统分享。
+两端共用**同一份页面内核**（`健康Buddy-7天身体管理工作台.html`，单文件、零依赖），只是外壳不同。桌面版多了「读写本地 CSV」的能力，安卓版能把 CSV 导到手机的 `Documents/健康Buddy` 并调系统分享。
+
+> 这个 HTML 是两端的共同来源，不作为独立形态发布——要改界面改它，然后同步到 `desktop-app/app/index.html` 并重新打包。
 
 ---
 
@@ -74,13 +75,6 @@
 
 ## 快速开始
 
-**网页版**
-
-```bash
-# 直接双击这个文件就行，不需要装任何东西
-健康Buddy-7天身体管理工作台.html
-```
-
 **桌面版（Windows x64）**
 
 ```bash
@@ -113,11 +107,11 @@ cd mobile-app
 
 | 层 | 技术 |
 |---|---|
-| 页面 | 原生 HTML / CSS / JavaScript，单文件约 148 KB、2735 行，零外部依赖，图表全是手写内联 SVG |
+| 页面内核 | 原生 HTML / CSS / JavaScript，单文件约 169 KB、3079 行，零外部依赖，图表全是手写内联 SVG；桌面与安卓共用 |
 | 桌面 | Electron 45 + @electron/packager 20，`contextIsolation` + `contextBridge`，CSV 读写走 4 个 IPC 通道 |
 | 安卓 | Capacitor 8.6 + `@capacitor/filesystem` + `@capacitor/share`，Gradle 8.14.3、AGP 8.13、JDK 21，minSdk 24 / targetSdk 36 |
 
-**为什么不用框架**：这个页面的目标形态是「一个文件、双击就能用、断网也能用」。引入构建链或 CDN 之后，一旦别人只保存了 HTML，功能就全废了。
+**为什么不用框架**：整个应用的目标是「一个文件、断网也能用、十年后还能打开」。引入构建链或 CDN 之后，任何一次外链失效都会让功能全废，而这个项目的全部价值就在「本地、可靠、不依赖任何服务」。
 
 ---
 
@@ -159,4 +153,4 @@ MIT，见 [LICENSE](LICENSE)。
 
 ---
 
-<sub>**English**: Health Buddy is a single-user, offline-first health tracking workbench. One self-contained HTML page (no framework, no build step, no CDN) ships as a web page, an Electron desktop app for Windows and a Capacitor Android app. It logs 19 daily fields, scores the day across six weighted dimensions, and generates evidence-based suggestions and a weekly report. All data stays local — no backend, no account, no telemetry. MIT licensed.</sub>
+<sub>**English**: Health Buddy is a single-user, offline-first health tracking workbench. One self-contained HTML page (no framework, no build step, no CDN) ships as a Windows desktop app (Electron) and an Android app (Capacitor), both built on the same single-file page core. It logs 19 daily fields, scores the day across six weighted dimensions, and generates evidence-based suggestions and a weekly report. All data stays local — no backend, no account, no telemetry. MIT licensed.</sub>
