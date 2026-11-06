@@ -11,7 +11,7 @@
 | 形态 | 怎么用 | 技术 |
 |---|---|---|
 | 桌面版（Windows） | 解压后运行 `HealthBuddy.exe` | Electron |
-| 安卓版 | 安装 `健康Buddy-安卓版-v1.2.15.apk` | Capacitor |
+| 安卓版 | 安装 `健康Buddy-安卓版-v1.2.16.apk` | Capacitor |
 
 两端共用**同一份页面内核**（`健康Buddy-7天身体管理工作台.html`，单文件、零依赖），只是外壳不同。桌面版多了「读写本地 CSV」的能力，安卓版能把 CSV 导到手机的 `Documents/健康Buddy` 并调系统分享。
 
@@ -107,7 +107,7 @@ cd mobile-app
 
 | 层 | 技术 |
 |---|---|
-| 页面内核 | 原生 HTML / CSS / JavaScript，单文件约 169 KB、3079 行，零外部依赖，图表全是手写内联 SVG；桌面与安卓共用 |
+| 页面内核 | 原生 HTML / CSS / JavaScript，单文件约 163 KB、3080 行，零外部依赖，图表全是手写内联 SVG；桌面与安卓共用 |
 | 桌面 | Electron 45 + @electron/packager 20，`contextIsolation` + `contextBridge`，CSV 读写走 4 个 IPC 通道 |
 | 安卓 | Capacitor 8.6 + `@capacitor/filesystem` + `@capacitor/share`，Gradle 8.14.3、AGP 8.13、JDK 21，minSdk 24 / targetSdk 36 |
 
@@ -122,8 +122,10 @@ cd mobile-app
 desktop-app/                       桌面版：main.js / preload.js / csv-store.js
   └ app/index.html                 页面副本，必须和根目录那份保持一致
 mobile-app/                        安卓工程（只在 android 分支）
+scripts/                           check-user-data.sh 查记录里的测试残留 / test-guard.js 防测试写库
 rollback.sh                        版本回退脚本：列版本 / 打包 / 还原
 健康Buddy-CSV数据模板.csv          空模板，19 列
+健康Buddy-示例记录.csv             6 天示例数据（虚拟，非真实健康记录）
 ```
 
 **分支模型**
