@@ -2377,7 +2377,12 @@ function renderTrend(){
   `;
   requestAnimationFrame(()=>{
     drawChart($('#c-sleep'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r?r.sleepHours:null),color:'#6366f1',label:'睡眠'}],refLine:7,refLabel:'7h',fmtVal:v=>v.toFixed(1)});
-    drawChart($('#c-bed'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r&&r.bedTime?bedToHours(r.bedTime):null),color:'#8b5cf6',label:'入睡'}],refLine:24,refLabel:'24:00',fmtY:v=>{const h=Math.round(v)%24;return h===0?'24点':h+'点';},fmtVal:bedLabel});
+    drawChart($('#c-bed'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r&&r.bedTime?bedToHours(r.bedTime):null),color:'#8b5cf6',label:'入睡'}],refLine:24,refLabel:'24:00',fmtY:v=>{
+      /* 刻度是插值出来的小数，直接取整会出现「1点、1点」这种重复标签，按分钟显示 */
+      let x=((v%24)+24)%24, h=Math.floor(x+1e-9), m=Math.round((x-h)*12)*5;
+      if(m>=60){ h=(h+1)%24; m=0; }
+      return (h===0&&m===0)?'24:00':String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+    },fmtVal:bedLabel});
     drawChart($('#c-ex'),{type:'bar',labels,todayIdx,series:[{values:recs.map(r=>r?r.exerciseMin:null),color:'#10b981',label:'运动'}],refLine:30,refLabel:'30min',fmtVal:v=>Math.round(v)});
     drawChart($('#c-water'),{type:'bar',labels,todayIdx,series:[{values:recs.map(r=>r?r.waterMl:null),color:'#06b6d4',label:'饮水'}],refLine:1500,refLabel:'1500ml',fmtY:v=>Math.round(v/100)*100,fmtVal:v=>Math.round(v)});
     drawChart($('#c-sit'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r?r.sitHours:null),color:'#f59e0b',label:'久坐'}],refLine:6,refLabel:'6h',fmtVal:v=>v.toFixed(1)});
