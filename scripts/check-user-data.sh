@@ -4,8 +4,9 @@
 #   退出码：0 = 干净；1 = 发现可疑行（必须立刻清理）
 set -uo pipefail
 
+# 默认检查桌面上的记录文件；可用 HB_CSV 指定其他路径
+: "${USERPROFILE:=${HOME:-.}}"
 CSV="${HB_CSV:-$USERPROFILE/Desktop/健康Buddy-我的记录.csv}"
-[ -f "$CSV" ] || CSV="C:/Users/FootballfanCR7/Desktop/健康Buddy-我的记录.csv"
 
 if [ ! -f "$CSV" ]; then
   echo "✗ 找不到记录文件：$CSV"
