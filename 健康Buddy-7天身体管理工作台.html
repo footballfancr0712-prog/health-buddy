@@ -129,11 +129,14 @@ html.hb-native,html.hb-native body{height:100%;overflow:hidden}
 .hint{font-size:11.5px;color:var(--t3);margin-top:4px;line-height:1.5}
 .water-val{font-size:22px;font-weight:800;color:var(--green-d);margin-bottom:2px}
 input[type=range]{width:100%;accent-color:var(--green)}
-.chips-inline{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
-.chips-inline .chip{flex-direction:row;padding:5px 12px;font-size:12px;min-width:0}
+.chips-inline{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px}
+.chips-inline .chip{flex-direction:row;justify-content:center;padding:6px 4px;font-size:12px;min-width:0}
 
 /* 日期选择条 */
-.chips-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+/* 横向滚动条：向外扩到卡片边缘，避免最后一个日期被"切一半"；右缘加淡出提示还能滑 */
+.chips-scroll{display:flex;gap:8px;overflow-x:auto;margin:0 -15px;padding:0 15px 4px;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent);
+  mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent)}
 .chips-scroll::-webkit-scrollbar{display:none}
 .chip{flex-shrink:0;border:1px solid rgba(229,231,235,.9);background:rgba(255,255,255,.62);border-radius:12px;padding:6px 8px;display:flex;flex-direction:column;align-items:center;font-size:12.5px;color:var(--t2);cursor:pointer;position:relative;min-width:58px;font-family:inherit}
 .chip em{font-style:normal;font-size:11px;color:var(--t3)}
@@ -330,9 +333,9 @@ input[type=range]{width:100%;accent-color:var(--green)}
   }
   #home-body>.card,#trend-body>.card,#report-body>.card,#page-log>.card{margin-bottom:0}
 
-  /* 跨满两列的：日期选择、校验提示、保存按钮、当日回顾、趋势页顶部提示 */
+  /* 跨满两列的：日期选择、校验提示、保存按钮、当日回顾、趋势页顶部提示、页脚声明 */
   #page-log>.card:first-of-type,#form-check,.btn-col,#day-review,
-  #trend-body>.card:first-child{grid-column:1/-1}
+  #trend-body>.card:first-child,.disclaimer{grid-column:1/-1}
 
   /* 列变窄后「早饭吃了什么」会把标签挤成两行 */
   .md-label{width:auto;min-width:76px;white-space:nowrap}
@@ -1883,8 +1886,11 @@ function drawChart(cv,cfg){
         const x=X(i), y=Y(v);
         ctx.fillStyle=(i===cfg.todayIdx)?s.color:(s.color+'c0');
         roundRect(ctx,x-bw/2,y,bw,Math.max(2,pad.t+ih-y),4); ctx.fill();
-        ctx.fillStyle='#6b7280'; ctx.font='9px system-ui'; ctx.textAlign='center';
-        ctx.fillText(cfg.fmtVal?cfg.fmtVal(v):v, x, y-4);
+        const lbB=String(cfg.fmtVal?cfg.fmtVal(v):v);
+        ctx.font='9px system-ui'; ctx.textAlign='center'; ctx.lineJoin='round';
+        /* 白描边垫底：标签压在柱子上也读得清 */
+        ctx.lineWidth=3; ctx.strokeStyle='rgba(255,255,255,.94)'; ctx.strokeText(lbB,x,y-4);
+        ctx.fillStyle='#6b7280'; ctx.fillText(lbB, x, y-4);
       });
     }else{
       ctx.strokeStyle=s.color; ctx.lineWidth=2; ctx.beginPath();
@@ -1900,8 +1906,13 @@ function drawChart(cv,cfg){
         const x=X(i), y=Y(v);
         ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,3.2,0,7); ctx.fill();
         ctx.strokeStyle=s.color; ctx.lineWidth=2; ctx.stroke();
-        ctx.fillStyle='#6b7280'; ctx.font='9px system-ui'; ctx.textAlign='center';
-        ctx.fillText(cfg.fmtVal?cfg.fmtVal(v):v, x, y-8);
+        const lbL=String(cfg.fmtVal?cfg.fmtVal(v):v);
+        /* 位置偏低的点把标签放下面，否则压着折线和圆点 */
+        const below=(y>pad.t+ih*0.55);
+        const ty=below?(y+13):(y-8);
+        ctx.font='9px system-ui'; ctx.textAlign='center'; ctx.lineJoin='round';
+        ctx.lineWidth=3; ctx.strokeStyle='rgba(255,255,255,.94)'; ctx.strokeText(lbL,x,ty);
+        ctx.fillStyle='#6b7280'; ctx.fillText(lbL, x, ty);
       });
     }
   });
@@ -1955,7 +1966,7 @@ function renderHome(){
       ['💧','饮水', rec.waterMl!=null?rec.waterMl+' ml':'—'],
       ['🍚','三餐', rec.meals?`${rec.meals.filter(Boolean).length}/3`:'—'],
       ['🪑','久坐', rec.sitHours!=null?rec.sitHours+' h':'—'],
-      ['🙂','精神', rec.mood?MOOD_EMOJI[rec.mood-1]:'—']
+      ['🙂','精神', rec.mood?rec.mood+'/5':'—']
     ];
     html+=`<div class="card">
       <div class="home-top">
