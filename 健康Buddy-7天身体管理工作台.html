@@ -382,9 +382,9 @@ input[type=range]{width:100%;accent-color:var(--green)}
           <div class="hint" id="f-sleep-auto"></div>
         </div>
         <div class="field" style="margin-top:12px">
-          <label>午休 <span class="unit">有午睡习惯就填 · 按分钟填</span></label>
+          <label>午休 <span class="unit">有午睡习惯就填 · 按小时填</span></label>
           <div class="chips-inline" id="nap-chips"></div>
-          <div class="unit-row"><input id="f-nap" max="180" min="0" placeholder="时长不固定？直接填数字" step="5" type="number"><span class="u">分钟</span></div>
+          <div class="unit-row"><input id="f-nap" max="3" min="0" placeholder="如 0.5" step="0.25" type="number"><span class="u">小时</span></div>
           <div class="hint" id="f-nap-hint">20~30 分钟最稳；超过 1 小时容易睡进深睡，醒来发闷，也会推迟当晚入睡</div>
         </div>
       </div>
@@ -565,6 +565,11 @@ function sleepTipText(c, napMin){
     +(napMin?('；加上午休 '+napMin+' 分钟，全天合计约 '+(Math.round((n+napMin/60)*10)/10).toFixed(1)+' 小时'):'')
     +'。躺下很久才睡着的，把这里往下调一点';
 }
+/* 分钟 → 小时文字（0.25 / 0.5 / 1，去掉多余的 0） */
+function fmtH(h){
+  var v=Math.round(h*100)/100;
+  return String(v);
+}
 /* 全天合计读数：夜间 + 午休，放在夜间睡眠下面 */
 function updateSleepTotal(){
   var box=document.getElementById('f-sleep-total');
@@ -574,7 +579,7 @@ function updateSleepTotal(){
   var n=Math.round(nv*10)/10, nap=formState.nap||0;
   var total=Math.round((n+nap/60)*10)/10;
   box.innerHTML='全天 <b>'+total.toFixed(1)+'</b> 小时'
-    +(nap? '<span class="eq">＝ 夜间 '+n.toFixed(1)+' + 午休 '+nap+' 分钟</span>'
+    +(nap? '<span class="eq">＝ 夜间 '+n.toFixed(1)+' + 午休 '+fmtH(nap/60)+' 小时</span>'
          : '<span class="eq">（这天没有午休）</span>');
 }
 /* 只刷新提示，不动用户已经调过的时长（改午休时用） */
@@ -2090,7 +2095,7 @@ function loadForm(key){
   formState.sugar=r.sugarCups||0;
   formState.nap=r.napMin||0;
   var napInput=document.getElementById('f-nap');
-  if(napInput) napInput.value=(r.napMin||'');
+  if(napInput) napInput.value=(r.napMin?fmtH(r.napMin/60):'');
   formState.mealsTouched=!!r.meals;
   formState.mood=r.mood||0;
   formState.body=r.bodyScore||0;
@@ -2124,9 +2129,9 @@ function renderToggles(){
       var nightH=Math.round(nightV*10)/10;
       var allH=Math.round((nightH+formState.nap/60)*10)/10;
       var eff=Math.round((nightH+Math.min(formState.nap,60)/60*0.5)*10)/10;
-      nh.textContent='计入评分 '+eff.toFixed(1)+' h（午睡按一半折算，最多折 30 分钟）';
+      nh.textContent='计入评分 '+eff.toFixed(1)+' 小时（午睡按一半折算，最多折 0.5 小时）';
     }else if(formState.nap>0){
-      nh.textContent='午休 '+formState.nap+' 分钟已记录；会单独加进「全天」里算';
+      nh.textContent='午休 '+fmtH(formState.nap/60)+' 小时已记录；会单独加进「全天」里算';
     }else{
       nh.textContent='20~30 分钟最稳；超过 1 小时容易睡进深睡，醒来发闷，也会推迟当晚入睡';
     }
@@ -3062,14 +3067,14 @@ function init(){
   $$('#nap-chips .chip').forEach(c=>c.onclick=()=>{
     formState.nap=+c.dataset.v;
     var ni=document.getElementById('f-nap');
-    if(ni) ni.value=formState.nap||'';
+    if(ni) ni.value=(formState.nap?fmtH(formState.nap/60):'');
     renderToggles(); refreshSleepTip(); saveDraft();
   });
   var napEl=document.getElementById('f-nap');
   if(napEl){
     napEl.addEventListener('input',function(){
-      var v=parseInt(napEl.value,10);
-      formState.nap=isNaN(v)?0:Math.max(0,Math.min(180,v));
+      var hv=parseFloat(napEl.value);
+      formState.nap=isNaN(hv)?0:Math.max(0,Math.min(180,Math.round(hv*60)));
       $$('#nap-chips .chip').forEach(c=>c.classList.toggle('on',+c.dataset.v===formState.nap));
       renderToggles(); refreshSleepTip(); updateSleepTotal(); markDirty(); saveDraft();
     });
