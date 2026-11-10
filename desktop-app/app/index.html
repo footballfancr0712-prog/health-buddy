@@ -371,7 +371,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
           <div class="field"><label>今天起床时间</label><input id="f-wake" type="time"></div>
         </div>
         <div class="field">
-          <label>总睡眠时长（小时，含午休）</label>
+          <label>夜间睡眠（小时，不含午休）</label>
           <input id="f-sleep" max="16" min="0" placeholder="填了入睡和起床会自动计算" step="0.1" type="number">
           <div class="hint" id="f-sleep-auto"></div>
         </div>
@@ -436,7 +436,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
       <div class="card" id="day-review" style="display:none"></div>
       <div class="card">
         <div class="card-title">🔄 CSV 数据导入 / 导出 <span class="unit">一次可导入多天，导入后自动算分</span></div>
-        <div class="hint">表头 14 列（括号里就是单位），列顺序不限、缺列可省：日期(必填，YYYY-MM-DD)、入睡时间 / 起床时间(24 小时制)、睡眠时长(小时)、运动时长(分钟)、饮水量(ml)、早餐 / 午餐 / 晚餐(吃了填「是」，没吃填「否」)、主要食物(食堂 / 外卖 / 自己做 / 快餐 / 均衡)、久坐时长(小时)、精神状态与身体自评(1-5)、备注、追问(可选，形如 sleep_short=work;water=forget，点按钮答会自动写入，一般不用手填)。三餐三列按「吃了填是、没吃填否」填，三列都填才算完整；如果这天压根没记三餐，三列全留空即可——只有三列全空才会被当作「没记三餐」、不参与评分。</div>
+        <div class="hint">表头 14 列（括号里就是单位），列顺序不限、缺列可省：日期(必填，YYYY-MM-DD)、入睡时间 / 起床时间(24 小时制)、睡眠时长(小时，填夜间、不含午休)、运动时长(分钟)、饮水量(ml)、早餐 / 午餐 / 晚餐(吃了填「是」，没吃填「否」)、主要食物(食堂 / 外卖 / 自己做 / 快餐 / 均衡)、久坐时长(小时)、精神状态与身体自评(1-5)、备注、追问(可选，形如 sleep_short=work;water=forget，点按钮答会自动写入，一般不用手填)。三餐三列按「吃了填是、没吃填否」填，三列都填才算完整；如果这天压根没记三餐，三列全留空即可——只有三列全空才会被当作「没记三餐」、不参与评分。</div>
         <div class="btn-row" style="margin-top:10px">
           <button class="btn primary" id="btn-csv-import" type="button">导入 CSV 文件</button>
           <button class="btn ghost" id="btn-csv-export" type="button">导出全部记录</button>
@@ -553,44 +553,56 @@ function calcSleep(bed, wake){
   if(mins<60||mins>16*60) return null;
   return mins/60;
 }
+function sleepTipText(c, napMin){
+  var n=Math.round(c*10)/10;          /* 和 totalSleep 用同一套取整，避免提示 7.3、存下来 7.2 */
+  return '在床 '+n.toFixed(1)+' 小时'
+    +(napMin?('；加上午休 '+napMin+' 分钟，全天合计约 '+(Math.round((n+napMin/60)*10)/10).toFixed(1)+' 小时'):'')
+    +'。躺下很久才睡着的，把这里往下调一点';
+}
+/* 只刷新提示，不动用户已经调过的时长（改午休时用） */
+function refreshSleepTip(){
+  var b=$('#f-bed').value, w=$('#f-wake').value, tip=$('#f-sleep-auto');
+  if(!b||!w||!tip) return;
+  var c=calcSleep(b,w); if(c==null) return;
+  tip.textContent=sleepTipText(c, formState.nap||0);
+}
 function autoSleepUI(){
   const b=$('#f-bed').value, w=$('#f-wake').value, tip=$('#f-sleep-auto');
   if(b&&w){
     const c=calcSleep(b,w);
     if(c!=null){
-      var napMin=formState.nap||0;
-      var guess=Math.max(0, c-napMin/60);
-      $('#f-sleep').value=guess.toFixed(1);
-      tip.textContent='在床 '+c.toFixed(1)+' 小时'
-        +(napMin?('，扣掉午休 '+napMin+' 分钟后约 '+guess.toFixed(1)+' 小时'):'')
-        +'；如果躺下很久才睡着，可以再往下调';
+      $('#f-sleep').value=c.toFixed(1);
+      tip.textContent=sleepTipText(c, formState.nap||0);
     }
     else tip.textContent='入睡和起床时间似乎不太合理，请手动填写时长';
   } else tip.textContent='';
 }
 
 /* ================= 评分引擎（完全基于填写数据） ================= */
-/* 睡眠口径（用户只填两个：总睡眠 + 午休）
- *   sleepHours     = 总睡眠时长（含午休）—— 用户填这个
+/* 睡眠口径（单一来源：sleepHours 就是【夜间睡眠】，不含午休）
+ *   sleepHours     = 夜间睡眠时长 —— 由「入睡/起床」算出在床时长自动填入，用户可微调
  *   napMin         = 午休分钟 —— 用户点一下
- *   nightSleep     = 总 - 午休（夜间，自动算，不用用户减）
+ *   nightSleep     = sleepHours（原样，不再相减）
+ *   totalSleep     = 夜间 + 午休（全天）
  *   effectiveSleep = 夜间 + 午休×50%（最多折 30 分钟）—— 评分用
- * 午睡有恢复价值，但补不回夜间深睡，所以不能等量替换。
+ *
+ * 为什么这样分：在床时间只能代表夜里，午休是另一段睡眠。
+ * 旧版把 sleepHours 当「含午休的总时长」，又把午休减掉算夜间，
+ * 结果午休被扣两次（自动填值扣一次、算夜间再扣一次），有午休的天必然不达标。
+ * 午睡有恢复价值，但补不回夜间深睡，所以评分时只折 50%、最多算 30 分钟。
  */
-function totalSleep(rec){
+function nightSleep(rec){
   if(!rec||rec.sleepHours==null) return null;
   return Math.round(rec.sleepHours*10)/10;
 }
-function nightSleep(rec){
-  if(!rec||rec.sleepHours==null) return null;
-  if(!rec.napMin) return Math.round(rec.sleepHours*10)/10;
-  var n=rec.sleepHours-rec.napMin/60;
-  return Math.round(Math.max(0,n)*10)/10;
+function totalSleep(rec){
+  var n=nightSleep(rec); if(n==null) return null;
+  return Math.round((n+(rec.napMin||0)/60)*10)/10;
 }
 function effectiveSleep(rec){
-  if(!rec||rec.sleepHours==null) return null;
-  var nap=rec.napMin?Math.min(rec.napMin,60)/60*0.5:0;   /* 总 - 午休×50% */
-  return Math.round((rec.sleepHours-nap)*10)/10;
+  var n=nightSleep(rec); if(n==null) return null;
+  var nap=rec.napMin?Math.min(rec.napMin,60)/60*0.5:0;   /* 午休只折一半，最多算 30 分钟 */
+  return Math.round((n+nap)*10)/10;
 }
 function scSleep(t){
   if(t==null) return null;
@@ -695,12 +707,12 @@ var NOTE_FACTS=[
         /* 备注里同时写了当天的消耗（运动/赶工），就别一句「别急着找别的原因」把话堵死 */
         var extra=/踢|打球|球赛|跑步|健身|爬山|骑车|游泳|体测|比赛|徒步|军训|搬|加班|通宵|考试|论文|汇报|赶/.test(String(r.note||''));
         if(extra)
-          return '备注说累，同时写了当天的消耗（运动或事情）——睡眠只有 '+f1(r.sleepHours)+' h 会让恢复变慢，这两天先补觉、别再叠加消耗，比找别的原因有用。';
-        return '备注说累，数据指向同一个地方：睡眠只有 '+f1(r.sleepHours)+' h。先补觉，不用急着找别的原因。';
+          return '备注说累，同时写了当天的消耗（运动或事情）——睡眠只有 '+f1(totalSleep(r))+' h 会让恢复变慢，这两天先补觉、别再叠加消耗，比找别的原因有用。';
+        return '备注说累，数据指向同一个地方：睡眠只有 '+f1(totalSleep(r))+' h。先补觉，不用急着找别的原因。';
       }
-      return '备注说累，但睡眠有 '+f1(r.sleepHours)+' h，反而是久坐 '+f1(r.sitHours)+' h——这次的累更像「坐太久」而不是「睡不够」，每坐 1 小时起身 2 分钟比早睡更管用。';
+      return '备注说累，但睡眠有 '+f1(totalSleep(r))+' h，反而是久坐 '+f1(r.sitHours)+' h——这次的累更像「坐太久」而不是「睡不够」，每坐 1 小时起身 2 分钟比早睡更管用。';
     },
-    no:function(r){ return '备注说累，而你睡了 '+f1(r.sleepHours)+' h，久坐 '+f1(r.sitHours)+' h 也正常——睡眠和久坐都不是主因，可以从饮水、三餐和情绪上找。'; },
+    no:function(r){ return '备注说累，而你睡了 '+f1(totalSleep(r))+' h，久坐 '+f1(r.sitHours)+' h 也正常——睡眠和久坐都不是主因，可以从饮水、三餐和情绪上找。'; },
     na:function(){ return '备注说累，但睡眠和久坐没填，判断不了是睡不够还是坐太久——补上这两项就能定位。'; } },
 
   { id:'caffeine', cat:'diet', rx:'sleep', label:'咖啡 / 奶茶 / 浓茶',
@@ -715,9 +727,9 @@ var NOTE_FACTS=[
 
   { id:'alcohol', cat:'diet', rx:'sleep', label:'喝酒',
     re:/喝酒|喝了酒|啤酒|白酒|红酒|应酬|宿醉|酒局/,
-    check:function(r){ if(r.sleepHours==null) return null; return (r.sleepHours<6.5||(r.mood!=null&&r.mood<=2)); },
-    yes:function(r){ return '喝酒后睡 '+f1(r.sleepHours)+' h，醒来状态也偏低——酒精会打碎后半夜的深睡，睡够时长也不等于睡好。'; },
-    no:function(r){ return '这天喝了酒但睡了 '+f1(r.sleepHours)+' h，暂时没在数据上留下痕迹，不过尽量别把酒局排在工作日前一晚。'; } },
+    check:function(r){ var t=totalSleep(r); if(t==null) return null; return (t<6.5||(r.mood!=null&&r.mood<=2)); },
+    yes:function(r){ return '喝酒后睡 '+f1(totalSleep(r))+' h，醒来状态也偏低——酒精会打碎后半夜的深睡，睡够时长也不等于睡好。'; },
+    no:function(r){ return '这天喝了酒但睡了 '+f1(totalSleep(r))+' h，暂时没在数据上留下痕迹，不过尽量别把酒局排在工作日前一晚。'; } },
 
   { id:'sick', cat:'body', rx:'mood', self:1, label:'身体不适 / 在吃药',
     re:/低烧|发烧|发热|感冒|咳嗽|喉咙|咽痛|头痛|头晕|鼻塞|流鼻涕|拉肚子|腹泻|胃疼|胃痛|肠胃|过敏|不舒服|不适|生病|吃药|感冒药|退烧药|消炎|牙疼|牙痛|口腔溃疡|发炎/,
@@ -807,14 +819,14 @@ function rxFor(dim, rec, opts){
   opts=opts||{};
   var r=rec||{};
   if(dim==='sleep'){
-    if(r.sleepHours!=null&&r.sleepHours<3){
-      return '只睡了 '+f1(r.sleepHours)+' h，这个数字更像没填准（比如把 7 填成 1）——先核对入睡和起床时间，再看要不要调作息。';
+    if(r.sleepHours!=null&&totalSleep(r)<3){
+      return '只睡了 '+f1(totalSleep(r))+' h，这个数字更像没填准（比如把 7 填成 1）——先核对入睡和起床时间，再看要不要调作息。';
     }
-    if(r.sleepHours!=null&&r.sleepHours>9.5){
-      return '睡了 '+f1(r.sleepHours)+' h，偏多了：睡太久通常是前面欠的睡眠债在还，但别超过 9 小时——周末补觉比平时多 1 小时以内就够，睡过头反而更昏。';
+    if(r.sleepHours!=null&&totalSleep(r)>9.5){
+      return '睡了 '+f1(totalSleep(r))+' h，偏多了：睡太久通常是前面欠的睡眠债在还，但别超过 9 小时——周末补觉比平时多 1 小时以内就够，睡过头反而更昏。';
     }
-    if(r.sleepHours!=null&&r.sleepHours<7){
-      var need=7-r.sleepHours;
+    if(r.sleepHours!=null&&totalSleep(r)<7){
+      var need=7-totalSleep(r);
       var step=Math.min(0.5, Math.ceil(need*2)/2);   /* 一次最多挪半小时，符合习惯养成节奏 */
       if(r.bedTime){
         var bedNow=bedToHours(r.bedTime);
@@ -879,7 +891,7 @@ function sleepPhaseAdvice(rec, winRecs){
   if(bed<25) return null;                  /* 00:00~01:00 之间的入睡不算相位问题 */
   var night=nightSleep(rec);
   if(night==null||night<7) return null;    /* 夜间时长不足走正常扣分逻辑 */
-  var msg='夜间睡了 '+f1(night)+' 小时'+(rec.napMin?('（加午休共 '+f1(rec.sleepHours)+' 小时）'):'')+
+  var msg='夜间睡了 '+f1(night)+' 小时'+(rec.napMin?('（加午休共 '+f1(totalSleep(rec))+' 小时）'):'')+
           '，评分会给满分——但入睡是 '+rec.bedTime+'，这是「睡得够、睡得晚」，睡前那段时间一直在往后跑，光看时长发现不了。';
   var base=bedBaseOf(winRecs);
   if(base!=null&&base<bed-0.5){
@@ -895,14 +907,9 @@ function sleepLatencyAdvice(rec){
   if(!rec||!rec.bedTime||!rec.wakeTime) return null;
   var c=calcSleep(rec.bedTime, rec.wakeTime); if(c==null) return null;
   var night=nightSleep(rec); if(night==null) return null;
-  var total=totalSleep(rec);
-  /* 前提校验：总睡眠 ≥ 在床时间时，减出来的差值不是「躺了多久」——
-     要么「睡眠时长」填的是夜间睡眠，要么午休记重了。这时候不能下结论。 */
-  if(total!=null){
-    if(total>c+0.2)
-      return '你填的睡眠时长 '+f1(total)+' h 比在床时间 '+f1(c)+' h 还长——如果那个数填的是「夜间睡眠」，请改成含午休的总时长，入睡耗时才算得准。';
-    if(total>=c-0.1) return null;
-  }
+  /* 前提校验：夜间睡眠不可能比在床时间还长，长了就是填错 */
+  if(night>c+0.2)
+    return '你填的夜间睡眠 '+f1(night)+' h 比在床时间 '+f1(c)+' h 还长——在床时长由入睡/起床时间算出，夜间睡眠只能比它短，核对一下这两个时间。';
   var lat=c-night;
   if(lat<1) return null;
   return '按记录你躺了 '+f1(lat)+' 小时才睡着（在床 '+f1(c)+' h，实际睡着 '+f1(night)+' h）——这比"睡够没有"更值得处理：睡前 1 小时放下手机、房间降到 18~20 度、别在床上刷视频，比硬躺着数羊有用。';
@@ -1231,10 +1238,10 @@ var QA_RULES = [
     when:function(rec){
       if(!rec || rec.sleepHours==null) return false;
       var low = (rec.mood!=null && rec.mood<=2) || (rec.bodyScore!=null && rec.bodyScore<=2);
-      return low && rec.sleepHours>=7;
+      return low && totalSleep(rec)>=7;
     },
     q:function(rec){
-      var h=f1(rec.sleepHours);
+      var h=f1(totalSleep(rec));
       var words=[];
       if(rec.mood!=null && rec.mood<=2) words.push('精神只有 '+rec.mood+'/5');
       if(rec.bodyScore!=null && rec.bodyScore<=2) words.push('身体自评 '+rec.bodyScore+'/5');
@@ -1271,8 +1278,8 @@ var QA_RULES = [
   },
   {
     id:'sleep_short',
-    when:function(rec){ return !!rec && rec.sleepHours!=null && rec.sleepHours>0 && rec.sleepHours<6; },
-    q:function(rec){ return '这天只睡了 '+f1(rec.sleepHours)+' 小时，主要是什么原因？'; },
+    when:function(rec){ var t=totalSleep(rec); return !!rec && t!=null && t>0 && t<6; },
+    q:function(rec){ return '这天只睡了 '+f1(totalSleep(rec))+' 小时，主要是什么原因？'; },
     opts:[['work','加班/赶作业'],['cant','睡不着'],['phone','刷手机忘了时间'],['early','本来就睡得少']],
     tip:{
       work:'赶工的日子里，把睡觉当成硬任务：定一个最晚收工点（比如 01:00），剩下的留到早上——后半夜的效率还不如睡够后的一小时。',
@@ -1347,7 +1354,7 @@ var QA_RULES = [
     id:'late',
     when:function(rec){
       return !!rec && !!rec.bedTime && rec.sleepHours!=null
-        && bedToHours(rec.bedTime)>=25.5 && rec.sleepHours>=7;
+        && bedToHours(rec.bedTime)>=25.5 && totalSleep(rec)>=7;
     },
     q:function(rec){ return '睡得晚（'+rec.bedTime+' 才睡）但睡够了，是哪种情况？'; },
     opts:[['habit','习惯了晚睡'],['nap','白天补过觉'],['work','事情没做完'],['phone','舍不得放下手机']],
@@ -1616,7 +1623,7 @@ function generateTips(winRecs){
   var tips=[];
 
   /* ---- 1. 睡眠债：7 小时标准与实际的差额累计 ---- */
-  var sleeps=filled.map(function(d){ return d.rec.sleepHours; }).filter(function(v){ return v!=null; });
+  var sleeps=filled.map(function(d){ return totalSleep(d.rec); }).filter(function(v){ return v!=null; });
   if(sleeps.length>=3){
     var debt=sleeps.length*7-sumArr(sleeps);
     if(debt>=3){
@@ -2095,11 +2102,12 @@ function renderToggles(){
   if(nh){
     var nightV=parseFloat($('#f-sleep').value);
     if(formState.nap>0&&!isNaN(nightV)){
-      var nightHours=Math.round(Math.max(0,nightV-formState.nap/60)*10)/10;
-      var eff=Math.round((nightV-Math.min(formState.nap,60)/60*0.5)*10)/10;
-      nh.textContent='夜间约 '+nightHours.toFixed(1)+' h + 午休 '+formState.nap+' 分钟 → 计入评分 '+eff.toFixed(1)+' h（午睡按一半折算，最多折 30 分钟）';
+      var nightH=Math.round(nightV*10)/10;
+      var allH=Math.round((nightH+formState.nap/60)*10)/10;
+      var eff=Math.round((nightH+Math.min(formState.nap,60)/60*0.5)*10)/10;
+      nh.textContent='夜间 '+nightH.toFixed(1)+' h + 午休 '+formState.nap+' 分钟 → 全天 '+allH.toFixed(1)+' h，计入评分 '+eff.toFixed(1)+' h（午睡按一半折算，最多折 30 分钟）';
     }else if(formState.nap>0){
-      nh.textContent='午休 '+formState.nap+' 分钟已记录；填上总睡眠时长就能拆出夜间多少';
+      nh.textContent='午休 '+formState.nap+' 分钟已记录；会单独加进「全天」里算';
     }else{
       nh.textContent='20~30 分钟最稳；超过 1 小时容易睡进深睡，醒来发闷，也会推迟当晚入睡';
     }
@@ -2182,10 +2190,10 @@ function validateRecord(rec, dateStr){
       var night=nightSleep(rec);
       if(night>c+0.35){
         warns.push({ field:'sleepHours', level:'warn', block:true,
-          msg:'入睡 '+rec.bedTime+'、起床 '+rec.wakeTime+' 在床只有 '+c.toFixed(1)+' 小时，扣掉午休后夜间却算出 '+f1(night)+' 小时，比在床时间还多——总睡眠填多了，或者午休记少了。' });
+          msg:'入睡 '+rec.bedTime+'、起床 '+rec.wakeTime+' 在床只有 '+c.toFixed(1)+' 小时，但夜间睡眠填了 '+f1(night)+' 小时——夜间睡眠不含午休，只能比在床时间短，核对一下。' });
       }else if(c-night>2){
         warns.push({ field:'sleepHours', level:'warn', block:false,
-          msg:'在床 '+c.toFixed(1)+' 小时，扣掉午休 '+((rec.napMin||0))+' 分钟后夜间只有 '+f1(night)+' 小时，等于躺了 '+f1(c-night)+' 小时才睡着——如果确实如此，这比睡多久更值得关注；如果是填少了，核对一下。' });
+          msg:'在床 '+c.toFixed(1)+' 小时，夜间睡着 '+f1(night)+' 小时，等于躺了 '+f1(c-night)+' 小时才睡着——如果确实如此，这比睡多久更值得关注；如果是填少了，核对一下。' });
       }
     }
   }
@@ -2387,7 +2395,7 @@ function renderTrend(){
     ${mealGridHTML(win,recs)}
   `;
   requestAnimationFrame(()=>{
-    drawChart($('#c-sleep'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r?r.sleepHours:null),color:'#6366f1',label:'睡眠'}],refLine:7,refLabel:'7h',fmtVal:v=>v.toFixed(1)});
+    drawChart($('#c-sleep'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r?totalSleep(r):null),color:'#6366f1',label:'睡眠'}],refLine:7,refLabel:'7h',fmtVal:v=>v.toFixed(1)});
     drawChart($('#c-bed'),{type:'line',labels,todayIdx,series:[{values:recs.map(r=>r&&r.bedTime?bedToHours(r.bedTime):null),color:'#8b5cf6',label:'入睡'}],refLine:24,refLabel:'24:00',fmtY:v=>{
       /* 刻度是插值出来的小数，直接取整会出现「1点、1点」这种重复标签，按分钟显示 */
       let x=((v%24)+24)%24, h=Math.floor(x+1e-9), m=Math.round((x-h)*12)*5;
@@ -3034,7 +3042,7 @@ function init(){
     formState.nap=+c.dataset.v;
     var ni=document.getElementById('f-nap');
     if(ni) ni.value=formState.nap||'';
-    renderToggles(); saveDraft();
+    renderToggles(); refreshSleepTip(); saveDraft();
   });
   var napEl=document.getElementById('f-nap');
   if(napEl){
@@ -3042,7 +3050,7 @@ function init(){
       var v=parseInt(napEl.value,10);
       formState.nap=isNaN(v)?0:Math.max(0,Math.min(180,v));
       $$('#nap-chips .chip').forEach(c=>c.classList.toggle('on',+c.dataset.v===formState.nap));
-      markDirty(); saveDraft();
+      refreshSleepTip(); markDirty(); saveDraft();
     });
   }
   $('#f-exercise').addEventListener('input',renderToggles);
