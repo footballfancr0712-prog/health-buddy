@@ -198,6 +198,10 @@ input[type=range]{width:100%;accent-color:var(--green)}
 .unit-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:16px;font-family:inherit;background:#fff;outline:none}
 .unit-row input:focus{border-color:var(--green)}
 .unit-row .u{font-size:12px;color:#9ca3af;flex-shrink:0;min-width:24px}
+/* 全天睡眠读数：紧跟在夜间睡眠下面，一眼看到合计 */
+.sleep-total{margin-top:9px;font-size:12.5px;color:var(--t2);display:flex;align-items:baseline;flex-wrap:wrap;gap:4px}
+.sleep-total b{font-size:16px;color:var(--green-d);font-weight:700}
+.sleep-total .eq{font-size:11.5px;color:var(--t3)}
 .check-box .ck-fix,.check-box .ck-go{border:1px solid currentColor;background:#fff;color:inherit;border-radius:7px;padding:3px 8px;font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap;margin-left:2px}
 
 /* 首页 */
@@ -374,6 +378,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
         <div class="field">
           <label>夜间睡眠 <span class="unit">不含午休 · 按小时填</span></label>
           <div class="unit-row"><input id="f-sleep" max="16" min="0" placeholder="填了入睡和起床会自动计算" step="0.1" type="number"><span class="u">小时</span></div>
+          <div class="sleep-total" id="f-sleep-total"></div>
           <div class="hint" id="f-sleep-auto"></div>
         </div>
         <div class="field" style="margin-top:12px">
@@ -560,6 +565,18 @@ function sleepTipText(c, napMin){
     +(napMin?('；加上午休 '+napMin+' 分钟，全天合计约 '+(Math.round((n+napMin/60)*10)/10).toFixed(1)+' 小时'):'')
     +'。躺下很久才睡着的，把这里往下调一点';
 }
+/* 全天合计读数：夜间 + 午休，放在夜间睡眠下面 */
+function updateSleepTotal(){
+  var box=document.getElementById('f-sleep-total');
+  if(!box) return;
+  var nv=parseFloat($('#f-sleep').value);
+  if(isNaN(nv)){ box.innerHTML=''; return; }
+  var n=Math.round(nv*10)/10, nap=formState.nap||0;
+  var total=Math.round((n+nap/60)*10)/10;
+  box.innerHTML='全天 <b>'+total.toFixed(1)+'</b> 小时'
+    +(nap? '<span class="eq">＝ 夜间 '+n.toFixed(1)+' + 午休 '+nap+' 分钟</span>'
+         : '<span class="eq">（这天没有午休）</span>');
+}
 /* 只刷新提示，不动用户已经调过的时长（改午休时用） */
 function refreshSleepTip(){
   var b=$('#f-bed').value, w=$('#f-wake').value, tip=$('#f-sleep-auto');
@@ -574,6 +591,7 @@ function autoSleepUI(){
     if(c!=null){
       $('#f-sleep').value=c.toFixed(1);
       tip.textContent=sleepTipText(c, formState.nap||0);
+      updateSleepTotal();
     }
     else tip.textContent='入睡和起床时间似乎不太合理，请手动填写时长';
   } else tip.textContent='';
@@ -2106,12 +2124,13 @@ function renderToggles(){
       var nightH=Math.round(nightV*10)/10;
       var allH=Math.round((nightH+formState.nap/60)*10)/10;
       var eff=Math.round((nightH+Math.min(formState.nap,60)/60*0.5)*10)/10;
-      nh.textContent='夜间 '+nightH.toFixed(1)+' h + 午休 '+formState.nap+' 分钟 → 全天 '+allH.toFixed(1)+' h，计入评分 '+eff.toFixed(1)+' h（午睡按一半折算，最多折 30 分钟）';
+      nh.textContent='计入评分 '+eff.toFixed(1)+' h（午睡按一半折算，最多折 30 分钟）';
     }else if(formState.nap>0){
       nh.textContent='午休 '+formState.nap+' 分钟已记录；会单独加进「全天」里算';
     }else{
       nh.textContent='20~30 分钟最稳；超过 1 小时容易睡进深睡，醒来发闷，也会推迟当晚入睡';
     }
+    updateSleepTotal();
   }
   syncMealNotesUI();
   const exv=parseFloat($('#f-exercise').value);
@@ -3038,6 +3057,7 @@ function init(){
   $('#f-wake').addEventListener('change',autoSleepUI);
   $('#f-water').addEventListener('input',e=>{ $('#f-water-val').textContent=e.target.value+' ml'; });
   ['f-bed','f-wake','f-sleep','f-exercise','f-water','f-sit','f-note','f-meal-note-0','f-meal-note-1','f-meal-note-2'].forEach(function(id){ document.getElementById(id).addEventListener('input',saveDraft); });
+  $('#f-sleep').addEventListener('input',updateSleepTotal);
   $$('#sugar-chips .chip').forEach(c=>c.onclick=()=>{ formState.sugar=+c.dataset.v; renderToggles(); saveDraft(); });
   $$('#nap-chips .chip').forEach(c=>c.onclick=()=>{
     formState.nap=+c.dataset.v;
@@ -3051,7 +3071,7 @@ function init(){
       var v=parseInt(napEl.value,10);
       formState.nap=isNaN(v)?0:Math.max(0,Math.min(180,v));
       $$('#nap-chips .chip').forEach(c=>c.classList.toggle('on',+c.dataset.v===formState.nap));
-      refreshSleepTip(); markDirty(); saveDraft();
+      renderToggles(); refreshSleepTip(); updateSleepTotal(); markDirty(); saveDraft();
     });
   }
   $('#f-exercise').addEventListener('input',renderToggles);
