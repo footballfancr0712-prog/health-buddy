@@ -160,7 +160,8 @@ cd mobile-app
 desktop-app/                       桌面版：main.js / preload.js / csv-store.js
   └ app/index.html                 页面副本，必须和根目录那份保持一致
 mobile-app/                        安卓工程（只在 android 分支）
-scripts/                           check-user-data.sh 查记录里的测试残留 / test-guard.js 防测试写库
+scripts/                           check-user-data.sh 查测试残留 / test-guard.js 防测试写库
+                                   upload-asar-patch.sh 小改动只传 240 KB 补丁，不重传 139 MB
 rollback.sh                        版本回退脚本：列版本 / 打包 / 还原
 健康Buddy-CSV数据模板.csv          空模板，19 列
 健康Buddy-示例记录.csv             6 天示例数据（虚拟，非真实健康记录）
