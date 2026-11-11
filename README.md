@@ -36,8 +36,8 @@
 
 | 平台 | 文件 | 怎么用 |
 |---|---|---|
-| Windows 64 位 | `HealthBuddy-desktop-v1.2.16-win64.zip` | 解压后双击 `HealthBuddy.exe`。免安装、不写注册表，删掉文件夹即卸载 |
-| 安卓 7.0+ | `HealthBuddy-android-v1.2.16.apk` | 传到手机安装；已装旧版可直接覆盖，数据不丢 |
+| Windows 64 位 | `HealthBuddy-desktop-v*-win64.zip`（约 139 MB） | 解压后双击 `HealthBuddy.exe`。免安装、不写注册表，删掉文件夹即卸载 |
+| 安卓 7.0+ | `HealthBuddy-android-v*.apk`（约 3 MB） | 传到手机安装；已装旧版可直接覆盖，数据不丢 |
 
 > 首次运行 Windows 可能提示「已保护你的电脑」——程序没有购买代码签名证书，点「更多信息 → 仍要运行」。
 > 若只想看看界面，也可以直接下载仓库里的 `健康Buddy-7天身体管理工作台.html`，双击用浏览器打开。
@@ -49,7 +49,7 @@
 | 形态 | 怎么用 | 技术 |
 |---|---|---|
 | 桌面版（Windows） | 解压后运行 `HealthBuddy.exe` | Electron |
-| 安卓版 | 安装 `健康Buddy-安卓版-v1.2.16.apk` | Capacitor |
+| 安卓版 | 装 Releases 里的 apk | Capacitor |
 
 两端共用**同一份页面内核**（`健康Buddy-7天身体管理工作台.html`，单文件、零依赖），只是外壳不同。桌面版多了「读写本地 CSV」的能力，安卓版能把 CSV 导到手机的 `Documents/健康Buddy` 并调系统分享。
 

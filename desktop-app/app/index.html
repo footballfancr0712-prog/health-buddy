@@ -110,7 +110,7 @@ html.hb-native,html.hb-native body{height:100%;overflow:hidden}
 .card-title .unit{font-size:11px;color:var(--t3);font-weight:400;margin-left:4px}
 
 /* 按钮 */
-.btn{border:none;border-radius:12px;padding:11px 16px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn{border:none;border-radius:12px;padding:11px 16px;min-height:44px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
 .btn.primary{background:linear-gradient(135deg,#12c08a,#059669);color:#fff;width:100%;box-shadow:0 5px 16px rgba(16,185,129,.28), inset 0 1px 0 rgba(255,255,255,.3)}
 .btn.primary.big{padding:14px;font-size:16px}
 .btn.primary:active{background:var(--green-d)}
@@ -280,7 +280,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
   border-top:1px solid rgba(255,255,255,.7);
   padding:6px 0 calc(7px + env(safe-area-inset-bottom));z-index:50;
 }
-.tabbar button{flex:1;border:none;background:none;font-size:20px;color:var(--t3);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;font-family:inherit}
+.tabbar button{flex:1;border:none;background:none;min-height:44px;font-size:20px;color:var(--t3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;font-family:inherit}
 .tabbar button span{font-size:11px}
 .tabbar button.on{color:var(--green-d)}
 
@@ -559,11 +559,10 @@ function calcSleep(bed, wake){
   if(mins<60||mins>16*60) return null;
   return mins/60;
 }
-function sleepTipText(c, napMin){
-  var n=Math.round(c*10)/10;          /* 和 totalSleep 用同一套取整，避免提示 7.3、存下来 7.2 */
-  return '在床 '+n.toFixed(1)+' 小时'
-    +(napMin?('；加上午休 '+napMin+' 分钟，全天合计约 '+(Math.round((n+napMin/60)*10)/10).toFixed(1)+' 小时'):'')
-    +'。躺下很久才睡着的，把这里往下调一点';
+function sleepTipText(c){
+  /* 全天合计已经单独占一行（#f-sleep-total），这里只说明「在床多久」，不重复报数 */
+  var n=Math.round(c*10)/10;
+  return '在床 '+n.toFixed(1)+' 小时。躺下很久才睡着的，把这里往下调一点';
 }
 /* 分钟 → 小时文字（0.25 / 0.5 / 1，去掉多余的 0） */
 function fmtH(h){
@@ -587,7 +586,7 @@ function refreshSleepTip(){
   var b=$('#f-bed').value, w=$('#f-wake').value, tip=$('#f-sleep-auto');
   if(!b||!w||!tip) return;
   var c=calcSleep(b,w); if(c==null) return;
-  tip.textContent=sleepTipText(c, formState.nap||0);
+  tip.textContent=sleepTipText(c);
 }
 function autoSleepUI(){
   const b=$('#f-bed').value, w=$('#f-wake').value, tip=$('#f-sleep-auto');
@@ -595,7 +594,7 @@ function autoSleepUI(){
     const c=calcSleep(b,w);
     if(c!=null){
       $('#f-sleep').value=c.toFixed(1);
-      tip.textContent=sleepTipText(c, formState.nap||0);
+      tip.textContent=sleepTipText(c);
       updateSleepTotal();
     }
     else tip.textContent='入睡和起床时间似乎不太合理，请手动填写时长';
@@ -1663,8 +1662,16 @@ function generateTips(winRecs){
     var aBed=avg(bedHrs);
     if(aBed>=24.5){
       var earliest=Math.min.apply(null,bedHrs);
+      var asleepVals=filled.map(function(d){ return totalSleep(d.rec); }).filter(function(v){ return v!=null; });
+      var asleepAvg=asleepVals.length?avg(asleepVals):null;
+      /* 以前这里写死「睡眠时长够」，睡眠不足时等于自相矛盾 */
+      var enough=(asleepAvg!=null && asleepAvg>=7);
       tips.push({ type:'sleep', w:22,
-        text:'平均入睡时间是 '+hhmm(aBed)+'，比 24:00 晚 '+f1(aBed-24)+' 小时；睡眠时长够，但生物钟整体在后移。你这周最早 '+hhmm(earliest)+' 就睡过，说明不是睡不着——先把起床时间固定住，入睡时间会自己跟回来。' });
+        text:'平均入睡时间是 '+hhmm(aBed)+'，比 24:00 晚 '+f1(aBed-24)+' 小时；'
+          +(enough
+              ? '睡眠时长够，但生物钟整体在后移。'
+              : '而且平均只睡 '+(asleepAvg==null?'不够':f1(asleepAvg)+' 小时')+'，时长也不够——晚睡和睡不够是同一件事的两面，先把起床时间固定住最划算。')
+          +'你这周最早 '+hhmm(earliest)+' 就睡过，说明不是睡不着——先把起床时间固定住，入睡时间会自己跟回来。'} );
     }
   }
 
@@ -1792,7 +1799,8 @@ function summaryTexts(filled){
   const slNight=filled.map(f=>nightSleep(f.rec)).filter(v=>v!=null);
   const aSleep=avg(slNight);
   const napDays=filled.filter(f=>f.rec.napMin>0).length;
-  t.sleep=slNight.length?`平均夜间睡眠 ${aSleep.toFixed(1)} 小时${napDays?`（另有 ${napDays} 天午休）`:''}${aSleep>=7?'，基本达标':'，还没到 7 小时'}`:'—';
+  const aTotal=avg(slTotal);
+  t.sleep=slTotal.length?`平均睡眠 ${aTotal.toFixed(1)} 小时${napDays?`（含 ${napDays} 天午休，其中夜间 ${aSleep.toFixed(1)} 小时）`:''}${aTotal>=7?'，基本达标':'，还没到 7 小时'}`:'—';
   const ex=filled.map(f=>f.rec.exerciseMin).filter(v=>v!=null);
   const exd=ex.filter(v=>v>0);
   t.exercise=ex.length?`运动 ${exd.length} 次${exd.length?`，平均每次 ${Math.round(avg(exd))} 分钟`:''}`:'—';
@@ -3051,7 +3059,7 @@ function init(){
   $('#mood-btns').innerHTML=MOOD_EMOJI.map((e,i)=>`<button type="button" data-v="${i+1}">${e}</button>`).join('');
   $('#body-btns').innerHTML=BODY_LABEL.map((t,i)=>`<button type="button" data-v="${i+1}">${t}</button>`).join('');
   /* 运动快捷 chips */
-  $('#ex-chips').innerHTML=EX_CHIPS.map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没运动':v+' min'}</button>`).join('');
+  $('#ex-chips').innerHTML=EX_CHIPS.map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没运动':v+' 分钟'}</button>`).join('');
   /* 饮食类型 chips */
   $('#food-chips').innerHTML=FOOD_TYPES.map(f=>`<button type="button" class="chip" data-v="${f}">${f}</button>`).join('');
   $('#sugar-chips').innerHTML=[0,1,2,3,4].map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没喝':v+' 杯'}</button>`).join('');

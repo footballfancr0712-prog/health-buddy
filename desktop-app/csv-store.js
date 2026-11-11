@@ -68,8 +68,19 @@ function normDate(v) {
 
 function writeRows(rows) {
   const body = rows.map(r => r.map(serCell).join(',')).join('\r\n') + '\r\n';
-  fs.mkdirSync(path.dirname(CSV_PATH), { recursive: true });
-  fs.writeFileSync(CSV_PATH, '\ufeff' + body, 'utf8');
+  const dir = path.dirname(CSV_PATH);
+  fs.mkdirSync(dir, { recursive: true });
+
+  /* 先写临时文件，再原子替换——中途崩溃/断电也不会把唯二的记录写坏 */
+  const tmp = CSV_PATH + '.tmp';
+  fs.writeFileSync(tmp, '\ufeff' + body, 'utf8');
+
+  /* 留一份上一次的内容，万一新文件有问题还能找回 */
+  try {
+    if (fs.existsSync(CSV_PATH)) fs.copyFileSync(CSV_PATH, CSV_PATH + '.bak');
+  } catch (e) { /* 备份失败不影响主流程 */ }
+
+  fs.renameSync(tmp, CSV_PATH);
 }
 
 function friendlyError(e) {
