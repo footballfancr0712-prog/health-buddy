@@ -110,7 +110,7 @@ html.hb-native,html.hb-native body{height:100%;overflow:hidden}
 .card-title .unit{font-size:11px;color:var(--t3);font-weight:400;margin-left:4px}
 
 /* 按钮 */
-.btn{border:none;border-radius:12px;padding:11px 16px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn{border:none;border-radius:12px;padding:11px 16px;min-height:44px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
 .btn.primary{background:linear-gradient(135deg,#12c08a,#059669);color:#fff;width:100%;box-shadow:0 5px 16px rgba(16,185,129,.28), inset 0 1px 0 rgba(255,255,255,.3)}
 .btn.primary.big{padding:14px;font-size:16px}
 .btn.primary:active{background:var(--green-d)}
@@ -280,7 +280,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
   border-top:1px solid rgba(255,255,255,.7);
   padding:6px 0 calc(7px + env(safe-area-inset-bottom));z-index:50;
 }
-.tabbar button{flex:1;border:none;background:none;font-size:20px;color:var(--t3);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;font-family:inherit}
+.tabbar button{flex:1;border:none;background:none;min-height:44px;font-size:20px;color:var(--t3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;font-family:inherit}
 .tabbar button span{font-size:11px}
 .tabbar button.on{color:var(--green-d)}
 
@@ -448,9 +448,16 @@ input[type=range]{width:100%;accent-color:var(--green)}
           <button class="btn ghost" id="btn-csv-export" type="button">导出全部记录</button>
         </div>
         <button class="btn ghost" id="btn-csv-template" type="button" style="margin-top:8px">下载 CSV 模板</button>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="btn ghost" id="btn-json-export" type="button">导出 JSON 备份</button>
+          <button class="btn ghost" id="btn-json-import" type="button">从备份恢复</button>
+        </div>
+        <div class="hint">JSON 是完整快照（含追问答案），换手机或清数据前导一份；CSV 适合拿去 Excel 看。</div>
         <div class="hint" id="csv-path" style="margin-top:6px;color:#0f766e;word-break:break-all;display:none"></div>
         <input accept=".csv,text/csv" id="csv-file" type="file" style="display:none">
+        <input accept=".json,application/json" id="json-file" type="file" style="display:none">
         <div class="hint" id="csv-status"></div>
+        <div class="hint" id="json-status"></div>
         <div class="hint" id="desk-status" style="margin-top:2px;color:#059669"></div>
       </div>
     </section>
@@ -559,11 +566,10 @@ function calcSleep(bed, wake){
   if(mins<60||mins>16*60) return null;
   return mins/60;
 }
-function sleepTipText(c, napMin){
-  var n=Math.round(c*10)/10;          /* 和 totalSleep 用同一套取整，避免提示 7.3、存下来 7.2 */
-  return '在床 '+n.toFixed(1)+' 小时'
-    +(napMin?('；加上午休 '+napMin+' 分钟，全天合计约 '+(Math.round((n+napMin/60)*10)/10).toFixed(1)+' 小时'):'')
-    +'。躺下很久才睡着的，把这里往下调一点';
+function sleepTipText(c){
+  /* 全天合计已经单独占一行（#f-sleep-total），这里只说明「在床多久」，不重复报数 */
+  var n=Math.round(c*10)/10;
+  return '在床 '+n.toFixed(1)+' 小时。躺下很久才睡着的，把这里往下调一点';
 }
 /* 分钟 → 小时文字（0.25 / 0.5 / 1，去掉多余的 0） */
 function fmtH(h){
@@ -587,7 +593,7 @@ function refreshSleepTip(){
   var b=$('#f-bed').value, w=$('#f-wake').value, tip=$('#f-sleep-auto');
   if(!b||!w||!tip) return;
   var c=calcSleep(b,w); if(c==null) return;
-  tip.textContent=sleepTipText(c, formState.nap||0);
+  tip.textContent=sleepTipText(c);
 }
 function autoSleepUI(){
   const b=$('#f-bed').value, w=$('#f-wake').value, tip=$('#f-sleep-auto');
@@ -595,7 +601,7 @@ function autoSleepUI(){
     const c=calcSleep(b,w);
     if(c!=null){
       $('#f-sleep').value=c.toFixed(1);
-      tip.textContent=sleepTipText(c, formState.nap||0);
+      tip.textContent=sleepTipText(c);
       updateSleepTotal();
     }
     else tip.textContent='入睡和起床时间似乎不太合理，请手动填写时长';
@@ -707,13 +713,13 @@ var NOTE_FACTS=[
   { id:'sleep_debt', cat:'sleep', rx:'sleep', label:'熬夜 / 睡太少',
     re:/熬夜|睡得少|只睡|睡不够|睡眠不足|通宵|才睡|两点睡|三点睡|一点睡/,
     check:function(r){ return r.sleepHours==null?null:(r.sleepHours<6.5); },
-    yes:function(r){ return '备注写熬夜，数据也对得上：只睡了 '+f1(r.sleepHours)+' h，离 7 h 差 '+f1(7-r.sleepHours)+' h。这种困是睡眠债，咖啡只能压住体感，压不住账。'; },
-    no:function(r){ return '备注写熬夜，但记录是 '+f1(r.sleepHours)+' h，够 7 h 标准——可能白天补了觉，或者「入睡时间」填的是放下手机的时间，值得核对一下。'; } },
+    yes:function(r){ return '备注写熬夜，数据也对得上：只睡了 '+f1(r.sleepHours)+' 小时，离 7 h 差 '+f1(7-r.sleepHours)+' 小时。这种困是睡眠债，咖啡只能压住体感，压不住账。'; },
+    no:function(r){ return '备注写熬夜，但记录是 '+f1(r.sleepHours)+' 小时，够 7 h 标准——可能白天补了觉，或者「入睡时间」填的是放下手机的时间，值得核对一下。'; } },
 
   { id:'insomnia', cat:'sleep', rx:'sleep', label:'入睡困难 / 早醒',
     re:/失眠|睡不着|入睡难|翻来覆去|躺了很久|易醒|早醒|睡了又醒|醒了好几次/,
     check:function(r){ if(!r.bedTime||r.sleepHours==null) return null; return (bedToHours(r.bedTime)<24.75); },
-    yes:function(r){ return '上床时间 '+r.bedTime+' 其实不算晚，但只睡了 '+f1(r.sleepHours)+' h——问题不在「睡得太晚」，在躺下之后，先别急着把上床时间往前挪。'; },
+    yes:function(r){ return '上床时间 '+r.bedTime+' 其实不算晚，但只睡了 '+f1(r.sleepHours)+' 小时——问题不在「睡得太晚」，在躺下之后，先别急着把上床时间往前挪。'; },
     no:function(r){ return '上床时间 '+r.bedTime+' 已经偏晚，先把入睡时间往前提半小时，比躺着硬睡更有效。'; },
     na:function(){ return '想知道失眠是不是真的影响了睡眠，把「入睡时间」和「睡眠时长」填上就能判断。'; } },
 
@@ -731,12 +737,12 @@ var NOTE_FACTS=[
         /* 备注里同时写了当天的消耗（运动/赶工），就别一句「别急着找别的原因」把话堵死 */
         var extra=/踢|打球|球赛|跑步|健身|爬山|骑车|游泳|体测|比赛|徒步|军训|搬|加班|通宵|考试|论文|汇报|赶/.test(String(r.note||''));
         if(extra)
-          return '备注说累，同时写了当天的消耗（运动或事情）——睡眠只有 '+f1(totalSleep(r))+' h 会让恢复变慢，这两天先补觉、别再叠加消耗，比找别的原因有用。';
-        return '备注说累，数据指向同一个地方：睡眠只有 '+f1(totalSleep(r))+' h。先补觉，不用急着找别的原因。';
+          return '备注说累，同时写了当天的消耗（运动或事情）——睡眠只有 '+f1(totalSleep(r))+' 小时 会让恢复变慢，这两天先补觉、别再叠加消耗，比找别的原因有用。';
+        return '备注说累，数据指向同一个地方：睡眠只有 '+f1(totalSleep(r))+' 小时。先补觉，不用急着找别的原因。';
       }
-      return '备注说累，但睡眠有 '+f1(totalSleep(r))+' h，反而是久坐 '+f1(r.sitHours)+' h——这次的累更像「坐太久」而不是「睡不够」，每坐 1 小时起身 2 分钟比早睡更管用。';
+      return '备注说累，但睡眠有 '+f1(totalSleep(r))+' 小时，反而是久坐 '+f1(r.sitHours)+' 小时——这次的累更像「坐太久」而不是「睡不够」，每坐 1 小时起身 2 分钟比早睡更管用。';
     },
-    no:function(r){ return '备注说累，而你睡了 '+f1(totalSleep(r))+' h，久坐 '+f1(r.sitHours)+' h 也正常——睡眠和久坐都不是主因，可以从饮水、三餐和情绪上找。'; },
+    no:function(r){ return '备注说累，而你睡了 '+f1(totalSleep(r))+' 小时，久坐 '+f1(r.sitHours)+' 小时 也正常——睡眠和久坐都不是主因，可以从饮水、三餐和情绪上找。'; },
     na:function(){ return '备注说累，但睡眠和久坐没填，判断不了是睡不够还是坐太久——补上这两项就能定位。'; } },
 
   { id:'caffeine', cat:'diet', rx:'sleep', label:'咖啡 / 奶茶 / 浓茶',
@@ -745,15 +751,15 @@ var NOTE_FACTS=[
       if(!prev||!r.bedTime||!prev.bedTime) return null;
       return (bedToHours(r.bedTime)-bedToHours(prev.bedTime))>0.5;   /* 比前一天晚睡半小时以上 */
     },
-    yes:function(r,prev){ return '这天入睡 '+r.bedTime+'，前一天是 '+prev.bedTime+'，往后推了 '+f1(bedToHours(r.bedTime)-bedToHours(prev.bedTime))+' h——和你喝的那杯时间上对得上。'; },
+    yes:function(r,prev){ return '这天入睡 '+r.bedTime+'，前一天是 '+prev.bedTime+'，往后推了 '+f1(bedToHours(r.bedTime)-bedToHours(prev.bedTime))+' 小时——和你喝的那杯时间上对得上。'; },
     no:function(r,prev){ return '这天入睡 '+r.bedTime+'，前一天 '+prev.bedTime+'，没有往后推——这杯暂时没影响入睡，但别在下午之后喝。'; },
     na:function(){ return '想确认这杯有没有影响睡眠，把「入睡时间」连续填几天就能对比出来。'; } },
 
   { id:'alcohol', cat:'diet', rx:'sleep', label:'喝酒',
     re:/喝酒|喝了酒|啤酒|白酒|红酒|应酬|宿醉|酒局/,
     check:function(r){ var t=totalSleep(r); if(t==null) return null; return (t<6.5||(r.mood!=null&&r.mood<=2)); },
-    yes:function(r){ return '喝酒后睡 '+f1(totalSleep(r))+' h，醒来状态也偏低——酒精会打碎后半夜的深睡，睡够时长也不等于睡好。'; },
-    no:function(r){ return '这天喝了酒但睡了 '+f1(totalSleep(r))+' h，暂时没在数据上留下痕迹，不过尽量别把酒局排在工作日前一晚。'; } },
+    yes:function(r){ return '喝酒后睡 '+f1(totalSleep(r))+' 小时，醒来状态也偏低——酒精会打碎后半夜的深睡，睡够时长也不等于睡好。'; },
+    no:function(r){ return '这天喝了酒但睡了 '+f1(totalSleep(r))+' 小时，暂时没在数据上留下痕迹，不过尽量别把酒局排在工作日前一晚。'; } },
 
   { id:'sick', cat:'body', rx:'mood', self:1, label:'身体不适 / 在吃药',
     re:/低烧|发烧|发热|感冒|咳嗽|喉咙|咽痛|头痛|头晕|鼻塞|流鼻涕|拉肚子|腹泻|胃疼|胃痛|肠胃|过敏|不舒服|不适|生病|吃药|感冒药|退烧药|消炎|牙疼|牙痛|口腔溃疡|发炎/,
@@ -779,8 +785,8 @@ var NOTE_FACTS=[
   { id:'busy', cat:'life', rx:'sit', label:'加班 / 赶进度',
     re:/加班|赶作业|赶工|考试|复习|deadline|ddl|开会|项目忙|忙了一天/,
     check:function(r){ return r.sitHours==null?null:(r.sitHours>8); },
-    yes:function(r){ return '忙的时候久坐到了 '+f1(r.sitHours)+' h，这就是扣分最多的地方——每 50 分钟起身 2 分钟，比整段休息更容易做到。'; },
-    no:function(r){ return '虽然忙，久坐只有 '+f1(r.sitHours)+' h，这点保持得不错。'; } },
+    yes:function(r){ return '忙的时候久坐到了 '+f1(r.sitHours)+' 小时，这就是扣分最多的地方——每 50 分钟起身 2 分钟，比整段休息更容易做到。'; },
+    no:function(r){ return '虽然忙，久坐只有 '+f1(r.sitHours)+' 小时，这点保持得不错。'; } },
 
   { id:'takeout', cat:'diet', rx:'meals', label:'外卖 / 重口味',
     re:/外卖|快餐|炸鸡|汉堡|烧烤|火锅|泡面|零食|甜食|夜宵|麻辣/,
@@ -844,10 +850,10 @@ function rxFor(dim, rec, opts){
   var r=rec||{};
   if(dim==='sleep'){
     if(r.sleepHours!=null&&totalSleep(r)<3){
-      return '只睡了 '+f1(totalSleep(r))+' h，这个数字更像没填准（比如把 7 填成 1）——先核对入睡和起床时间，再看要不要调作息。';
+      return '只睡了 '+f1(totalSleep(r))+' 小时，这个数字更像没填准（比如把 7 填成 1）——先核对入睡和起床时间，再看要不要调作息。';
     }
     if(r.sleepHours!=null&&totalSleep(r)>9.5){
-      return '睡了 '+f1(totalSleep(r))+' h，偏多了：睡太久通常是前面欠的睡眠债在还，但别超过 9 小时——周末补觉比平时多 1 小时以内就够，睡过头反而更昏。';
+      return '睡了 '+f1(totalSleep(r))+' 小时，偏多了：睡太久通常是前面欠的睡眠债在还，但别超过 9 小时——周末补觉比平时多 1 小时以内就够，睡过头反而更昏。';
     }
     if(r.sleepHours!=null&&totalSleep(r)<7){
       var need=7-totalSleep(r);
@@ -863,7 +869,7 @@ function rxFor(dim, rec, opts){
         tgt=hhmm(bedNow-step);
         return '今晚把上床时间从 '+r.bedTime+' 收到 '+tgt+'（提前 '+Math.round(step*60)+' 分钟），比一次提前两小时更容易做到；连着三天就能补回 1.5 h 左右。';
       }
-      return '今晚比昨天早 '+Math.round(step*60)+' 分钟上床，还差 '+f1(need)+' h 分三天补，别一次硬睡。';
+      return '今晚比昨天早 '+Math.round(step*60)+' 分钟上床，还差 '+f1(need)+' 小时 分三天补，别一次硬睡。';
     }
     return '这天的睡眠时长已经达标，重点放在固定入睡时间上，误差控制在半小时内。';
   }
@@ -892,7 +898,7 @@ function rxFor(dim, rec, opts){
   if(dim==='sit'){
     if(r.sitHours!=null&&r.sitHours>6){
       var n=Math.max(2,Math.round(r.sitHours)-2);
-      return '久坐 '+f1(r.sitHours)+' h，按每坐 1 小时起身 2 分钟算，这天至少要起身 '+n+' 次——接水、站着回消息都算。';
+      return '久坐 '+f1(r.sitHours)+' 小时，按每坐 1 小时起身 2 分钟算，这天至少要起身 '+n+' 次——接水、站着回消息都算。';
     }
     return '久坐时长控制得不错，保持每 1 小时起来一次就行。';
   }
@@ -933,10 +939,10 @@ function sleepLatencyAdvice(rec){
   var night=nightSleep(rec); if(night==null) return null;
   /* 前提校验：夜间睡眠不可能比在床时间还长，长了就是填错 */
   if(night>c+0.2)
-    return '你填的夜间睡眠 '+f1(night)+' h 比在床时间 '+f1(c)+' h 还长——在床时长由入睡/起床时间算出，夜间睡眠只能比它短，核对一下这两个时间。';
+    return '你填的夜间睡眠 '+f1(night)+' 小时 比在床时间 '+f1(c)+' 小时 还长——在床时长由入睡/起床时间算出，夜间睡眠只能比它短，核对一下这两个时间。';
   var lat=c-night;
   if(lat<1) return null;
-  return '按记录你躺了 '+f1(lat)+' 小时才睡着（在床 '+f1(c)+' h，实际睡着 '+f1(night)+' h）——这比"睡够没有"更值得处理：睡前 1 小时放下手机、房间降到 18~20 度、别在床上刷视频，比硬躺着数羊有用。';
+  return '按记录你躺了 '+f1(lat)+' 小时才睡着（在床 '+f1(c)+' 小时，实际睡着 '+f1(night)+' 小时）——这比"睡够没有"更值得处理：睡前 1 小时放下手机、房间降到 18~20 度、别在床上刷视频，比硬躺着数羊有用。';
 }
 
 /* ---------- 午睡：单独说，因为它常常就是晚睡的元凶 ---------- */
@@ -1663,8 +1669,16 @@ function generateTips(winRecs){
     var aBed=avg(bedHrs);
     if(aBed>=24.5){
       var earliest=Math.min.apply(null,bedHrs);
+      var asleepVals=filled.map(function(d){ return totalSleep(d.rec); }).filter(function(v){ return v!=null; });
+      var asleepAvg=asleepVals.length?avg(asleepVals):null;
+      /* 以前这里写死「睡眠时长够」，睡眠不足时等于自相矛盾 */
+      var enough=(asleepAvg!=null && asleepAvg>=7);
       tips.push({ type:'sleep', w:22,
-        text:'平均入睡时间是 '+hhmm(aBed)+'，比 24:00 晚 '+f1(aBed-24)+' 小时；睡眠时长够，但生物钟整体在后移。你这周最早 '+hhmm(earliest)+' 就睡过，说明不是睡不着——先把起床时间固定住，入睡时间会自己跟回来。' });
+        text:'平均入睡时间是 '+hhmm(aBed)+'，比 24:00 晚 '+f1(aBed-24)+' 小时；'
+          +(enough
+              ? '睡眠时长够，但生物钟整体在后移。'
+              : '而且平均只睡 '+(asleepAvg==null?'不够':f1(asleepAvg)+' 小时')+'，时长也不够——晚睡和睡不够是同一件事的两面，先把起床时间固定住最划算。')
+          +'你这周最早 '+hhmm(earliest)+' 就睡过，说明不是睡不着——先把起床时间固定住，入睡时间会自己跟回来。'} );
     }
   }
 
@@ -1792,7 +1806,8 @@ function summaryTexts(filled){
   const slNight=filled.map(f=>nightSleep(f.rec)).filter(v=>v!=null);
   const aSleep=avg(slNight);
   const napDays=filled.filter(f=>f.rec.napMin>0).length;
-  t.sleep=slNight.length?`平均夜间睡眠 ${aSleep.toFixed(1)} 小时${napDays?`（另有 ${napDays} 天午休）`:''}${aSleep>=7?'，基本达标':'，还没到 7 小时'}`:'—';
+  const aTotal=avg(slTotal);
+  t.sleep=slTotal.length?`平均睡眠 ${aTotal.toFixed(1)} 小时${napDays?`（含 ${napDays} 天午休，其中夜间 ${aSleep.toFixed(1)} 小时）`:''}${aTotal>=7?'，基本达标':'，还没到 7 小时'}`:'—';
   const ex=filled.map(f=>f.rec.exerciseMin).filter(v=>v!=null);
   const exd=ex.filter(v=>v>0);
   t.exercise=ex.length?`运动 ${exd.length} 次${exd.length?`，平均每次 ${Math.round(avg(exd))} 分钟`:''}`:'—';
@@ -1992,11 +2007,11 @@ function renderHome(){
     const minNow=mindLevel(rec, today);
     const crisisToday=(minNow==='crisis');
     const cells=[
-      ['😴','睡眠', rec.sleepHours!=null?(totalSleep(rec).toFixed(1)+' h'):'—'],
+      ['😴','睡眠', rec.sleepHours!=null?(totalSleep(rec).toFixed(1)+' 小时'):'—'],
       ['🏃','运动', rec.exerciseMin!=null?rec.exerciseMin+' min':'—'],
       ['💧','饮水', rec.waterMl!=null?rec.waterMl+' ml':'—'],
       ['🍚','三餐', rec.meals?`${rec.meals.filter(Boolean).length}/3`:'—'],
-      ['🪑','久坐', rec.sitHours!=null?rec.sitHours+' h':'—'],
+      ['🪑','久坐', rec.sitHours!=null?rec.sitHours+' 小时':'—'],
       ['🙂','精神', rec.mood?rec.mood+'/5':'—']
     ];
     html+=`<div class="card">
@@ -2216,6 +2231,9 @@ function validateRecord(rec, dateStr){
       if(night>c+0.35){
         warns.push({ field:'sleepHours', level:'warn', block:true,
           msg:'入睡 '+rec.bedTime+'、起床 '+rec.wakeTime+' 在床只有 '+c.toFixed(1)+' 小时，但夜间睡眠填了 '+f1(night)+' 小时——夜间睡眠不含午休，只能比在床时间短，核对一下。' });
+      }else if(night>12){
+        warns.push({ field:'sleepHours', level:'warn', block:true,
+          msg:'夜间睡眠填了 '+f1(night)+' 小时，超过 12 小时——真的睡了这么久（比如生病）就再点一次保存；如果是把午休也算进来了，请把午休单独填到下面那一栏。' });
       }else if(c-night>2){
         warns.push({ field:'sleepHours', level:'warn', block:false,
           msg:'在床 '+c.toFixed(1)+' 小时，夜间睡着 '+f1(night)+' 小时，等于躺了 '+f1(c-night)+' 小时才睡着——如果确实如此，这比睡多久更值得关注；如果是填少了，核对一下。' });
@@ -2520,12 +2538,12 @@ function renderReport(){
   const hasMeals=filled.filter(f=>f.rec.meals).length;
   const rg=filled.filter(f=>f.rec.meals&&f.rec.meals.filter(Boolean).length===3).length;
   const stats=[
-    ['😴','平均睡眠', sleeps.length?avg(sleeps).toFixed(1)+' h':'—'],
+    ['😴','平均睡眠', sleeps.length?avg(sleeps).toFixed(1)+' 小时':'—'],
     ['🏃','运动次数', exMins.length?exd.length+' 次':'—'],
     ['⏱️','平均每次运动', exd.length?Math.round(avg(exd))+' min':'—'],
     ['💧','平均饮水', waters.length?Math.round(avg(waters))+' ml':'—'],
     ['🍚','三餐规律', hasMeals?`${rg}/${hasMeals} 天`:'—'],
-    ['🪑','平均久坐', sits.length?avg(sits).toFixed(1)+' h':'—'],
+    ['🪑','平均久坐', sits.length?avg(sits).toFixed(1)+' 小时':'—'],
     ['🙂','状态均值', moods.length?avg(moods).toFixed(1)+'/5':'—'],
     ['📅','记录天数', `${n}/7 天`]
   ];
@@ -2893,7 +2911,7 @@ function showCsvPath(r){
   }
 }
 
-function downloadTextCSV(name, text, okMsg){
+function downloadText(name, text, mime, okMsg){
   if(NATIVE_FS && NATIVE_FS.Filesystem){
     window._csvName = name;
     nativeSaveCSV(name, text).then(function(r){
@@ -2902,7 +2920,7 @@ function downloadTextCSV(name, text, okMsg){
     });
     return;
   }
-  var blob=new Blob([text],{type:'text/csv;charset=utf-8'});
+  var blob=new Blob([text],{type:mime||'text/plain;charset=utf-8'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download=name;
@@ -2911,12 +2929,55 @@ function downloadTextCSV(name, text, okMsg){
   setTimeout(function(){ URL.revokeObjectURL(a.href); if(a.parentNode) a.parentNode.removeChild(a); },300);
   if(okMsg) toast(okMsg);
 }
+function downloadTextCSV(name, text, okMsg){
+  return downloadText(name, text, 'text/csv;charset=utf-8', okMsg);
+}
+
+/* ---------- JSON 全量备份：换手机、清数据前的兜底 ---------- */
+function jsonBackupText(){
+  return JSON.stringify({
+    app:'健康Buddy', schema:1, exportedAt:new Date().toISOString(),
+    days:Object.keys(records).length, records:records
+  }, null, 2);
+}
+function exportJSONBackup(){
+  var n=Object.keys(records).length;
+  if(!n){ toast('还没有记录可以导出'); return; }
+  var name='健康Buddy-备份-'+fmtDate(new Date())+'.json';
+  downloadText(name, jsonBackupText(), 'application/json;charset=utf-8', '已导出 '+n+' 天记录');
+  var st=$('#json-status');
+  if(st) st.textContent='已导出 '+n+' 天到 '+name;
+}
+function importJSONFile(file){
+  var reader=new FileReader();
+  reader.onload=function(){
+    var data;
+    try{ data=JSON.parse(String(reader.result)); }catch(e){ toast('这不是有效的 JSON 文件'); return; }
+    var incoming=data&&data.records;
+    if(!incoming||typeof incoming!=='object'){ toast('文件里没有 records，可能不是本软件的备份'); return; }
+    var dates=Object.keys(incoming).filter(function(k){ return /^\d{4}-\d{2}-\d{2}$/.test(k); });
+    if(!dates.length){ toast('备份里没有可用的日期'); return; }
+    var exist=dates.filter(function(d){ return !!records[d]; }).length;
+    var msg='从备份恢复 '+dates.length+' 天'+(exist?('，其中 '+exist+' 天已有记录（会按备份内容覆盖）'):'')+'，继续吗？';
+    if(!confirm(msg)) return;
+    dates.forEach(function(d){ records[d]=incoming[d]; });
+    saveRecords(records);
+    refreshAll();
+    deskSyncAll(dates);
+    var st=$('#json-status');
+    if(st) st.textContent='已从备份恢复 '+dates.length+' 天';
+    toast('已恢复 '+dates.length+' 天');
+  };
+  reader.readAsText(file);
+}
 
 /* 编程式接口：window.healthBuddy.importCSV(csv文本) / .exportCSV() / .getRecords() */
 window.healthBuddy = {
   importCSV: function(text, opts){ return ingestCSVText(text, !!(opts&&opts.silent)); },
   importFile: function(file){ importCSVFile(file); },
   exportCSV: function(){ exportRecordsCSV(); },
+  exportJSON: function(){ return jsonBackupText(); },
+  importJSON: function(text){ var d=JSON.parse(text); Object.keys(d.records||{}).forEach(function(k){ records[k]=d.records[k]; }); saveRecords(records); refreshAll(); },
   headers: CSV_HEADERS.slice(),
   getRecords: function(){ return JSON.parse(JSON.stringify(records)); }
 };
@@ -3051,7 +3112,7 @@ function init(){
   $('#mood-btns').innerHTML=MOOD_EMOJI.map((e,i)=>`<button type="button" data-v="${i+1}">${e}</button>`).join('');
   $('#body-btns').innerHTML=BODY_LABEL.map((t,i)=>`<button type="button" data-v="${i+1}">${t}</button>`).join('');
   /* 运动快捷 chips */
-  $('#ex-chips').innerHTML=EX_CHIPS.map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没运动':v+' min'}</button>`).join('');
+  $('#ex-chips').innerHTML=EX_CHIPS.map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没运动':v+' 分钟'}</button>`).join('');
   /* 饮食类型 chips */
   $('#food-chips').innerHTML=FOOD_TYPES.map(f=>`<button type="button" class="chip" data-v="${f}">${f}</button>`).join('');
   $('#sugar-chips').innerHTML=[0,1,2,3,4].map(v=>`<button type="button" class="chip" data-v="${v}">${v===0?'没喝':v+' 杯'}</button>`).join('');
@@ -3121,6 +3182,13 @@ function init(){
   };
   $('#btn-csv-export').onclick=exportRecordsCSV;
   $('#btn-csv-template').onclick=downloadTemplateCSV;
+  var jsonInput=$('#json-file');
+  $('#btn-json-export').onclick=exportJSONBackup;
+  $('#btn-json-import').onclick=function(){ jsonInput.value=''; jsonInput.click(); };
+  jsonInput.onchange=function(){
+    var f=jsonInput.files&&jsonInput.files[0];
+    if(f) importJSONFile(f);
+  };
   deskBootSync();
   switchTab('home');
 }
