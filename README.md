@@ -2,7 +2,7 @@
 
 一个只给自己用的身体管理工作台。每天用 30 秒记一笔，它负责算分、找原因、给建议。
 
-**没有服务器、没有账号、没有埋点**，数据就在你本机：浏览器里存 localStorage，桌面版写本地 CSV，安卓版可导出 CSV。
+**没有服务器、没有账号、没有埋点**，数据就在你本机：浏览器里存 localStorage，桌面版写本地 CSV，安卓版可导出 CSV 或 JSON 全量备份。
 
 <p align="center">
   <img src="docs/screenshots/mobile-home.png" width="23%" alt="今日">
