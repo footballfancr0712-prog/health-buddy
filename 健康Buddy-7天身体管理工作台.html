@@ -152,7 +152,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
 /* 三餐明细 */
 .meal-detail{margin-top:9px;display:flex;flex-direction:column;gap:6px}
 .md-row{display:flex;align-items:center;gap:8px}
-.md-label{width:70px;flex-shrink:0;font-size:12px;color:var(--t2)}
+.md-label{width:44px;flex-shrink:0;font-size:12px;color:var(--t2)}
 .md-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:16px;font-family:inherit;background:#fff;outline:none}
 .md-row input:focus{border-color:var(--green)}
 .md-row input:disabled{background:#f6f7f6;color:#9ca3af;border-style:dashed}
@@ -343,7 +343,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
   #trend-body>.card:first-child,.disclaimer{grid-column:1/-1}
 
   /* 列变窄后「早饭吃了什么」会把标签挤成两行 */
-  .md-label{width:auto;min-width:76px;white-space:nowrap}
+  .md-label{width:auto;min-width:44px;white-space:nowrap}
 }
 </style>
 </head>
@@ -417,9 +417,9 @@ input[type=range]{width:100%;accent-color:var(--green)}
             <button id="meal-2" type="button">🍜 晚餐</button>
           </div>
           <div class="meal-detail">
-            <div class="md-row"><span class="md-label">早饭吃了什么</span><input id="f-meal-note-0" maxlength="20" placeholder="可选，如 包子豆浆" type="text"></div>
-            <div class="md-row"><span class="md-label">午饭吃了什么</span><input id="f-meal-note-1" maxlength="20" placeholder="可选，如 食堂两荤一素" type="text"></div>
-            <div class="md-row"><span class="md-label">晚饭吃了什么</span><input id="f-meal-note-2" maxlength="20" placeholder="可选，如 泡面加蛋" type="text"></div>
+            <div class="md-row"><span class="md-label">早饭</span><input id="f-meal-note-0" maxlength="40" placeholder="吃了什么，如 包子豆浆" type="text"></div>
+            <div class="md-row"><span class="md-label">午饭</span><input id="f-meal-note-1" maxlength="40" placeholder="吃了什么，如 食堂两荤一素" type="text"></div>
+            <div class="md-row"><span class="md-label">晚饭</span><input id="f-meal-note-2" maxlength="40" placeholder="吃了什么，如 泡面加蛋" type="text"></div>
           </div>
         </div>
         <div class="field">
